@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<title>emlog</title>
+<style>
+:root {
+  --mood-1: #5c6b8a;
+  --mood-2: #7a8ba8;
+  --mood-3: #a0a0a0;
+  --mood-4: #a8c4a0;
+  --mood-5: #7db87d;
+  --bg: #1a1a2e;
+  --bg-card: #25253e;
+  --bg-input: #2d2d4a;
+  --text: #e0e0e0;
+  --text-dim: #888;
+  --text-dimmer: #555;
+  --accent: #a8c4a0;
+  --radius: 14px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.app {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 16px 100px;
+  position: relative;
+}
+
+/* --- Nav --- */
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #16162b;
+  border-top: 1px solid #2a2a4a;
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 8px 0 env(safe-area-inset-bottom, 8px);
+  z-index: 100;
+}
+.nav button {
+  flex: 1;
+  max-width: 160px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 6px 0 2px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: color 0.15s;
+}
+.nav button.active { color: var(--accent); }
+.nav button svg { width: 24px; height: 24px; }
+
+/* --- Header --- */
+.header {
+  padding: 20px 0 12px;
+  text-align: center;
+}
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.header .date {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* --- Record Page --- */
+.section-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 24px 0 10px;
+  padding-left: 2px;
+}
+
+.mood-selector {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 8px 0;
+}
+.mood-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  position: relative;
+}
+.mood-btn:active { transform: scale(0.92); }
+.mood-btn.selected {
+  border-color: #fff;
+  transform: scale(1.12);
+  box-shadow: 0 0 16px rgba(255,255,255,0.15);
+}
+.mood-btn .mood-label {
+  position: absolute;
+  bottom: -20px;
+  font-size: 10px;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+.mood-btn.selected .mood-label { color: var(--text); }
+
+.mood-btn[data-mood="1"] { background: var(--mood-1); }
+.mood-btn[data-mood="2"] { background: var(--mood-2); }
+.mood-btn[data-mood="3"] { background: var(--mood-3); }
+.mood-btn[data-mood="4"] { background: var(--mood-4); }
+.mood-btn[data-mood="5"] { background: var(--mood-5); }
+
+/* --- Tags --- */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+.tag-btn {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #3a3a5a;
+  background: var(--bg-card);
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.tag-btn:active { transform: scale(0.95); }
+.tag-btn.selected {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(168, 196, 160, 0.12);
+}
+.tag-manage-btn {
+  padding: 7px 12px;
+  border-radius: 20px;
+  border: 1.5px dashed #3a3a5a;
+  background: none;
+  color: var(--text-dimmer);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* --- Text inputs --- */
+.text-area {
+  width: 100%;
+  min-height: 72px;
+  background: var(--bg-input);
+  border: 1.5px solid #3a3a5a;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  padding: 12px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.6;
+  transition: border-color 0.2s;
+}
+.text-area:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.text-area::placeholder { color: var(--text-dimmer); }
+
+.why-toggle {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.why-toggle:hover { color: var(--text); }
+
+/* --- Save feedback --- */
+.save-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  background: rgba(168,196,160,0.95);
+  color: #1a1a2e;
+  padding: 16px 32px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 200;
+}
+.save-toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* --- Calendar Page --- */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 12px 0;
+}
+.month-nav button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 12px;
+}
+.month-nav .month-label {
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 140px;
+  text-align: center;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 4px 0;
+}
+.cal-header {
+  font-size: 11px;
+  color: var(--text-dimmer);
+  text-align: center;
+  padding: 4px 0;
+}
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.cal-day:not(.empty):hover { opacity: 0.8; }
+.cal-day.today {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.cal-day.has-record { color: #fff; font-weight: 600; }
+.cal-day.empty { cursor: default; }
+
+/* --- Detail Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 300;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg-card);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 430px;
+  max-height: 80dvh;
+  overflow-y: auto;
+  padding: 24px 20px 40px;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal .modal-date {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.modal .mood-display {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.modal .detail-section {
+  margin-top: 16px;
+}
+.modal .detail-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.modal .detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.modal .detail-tag {
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: rgba(168,196,160,0.12);
+  border: 1px solid rgba(168,196,160,0.3);
+  color: var(--text);
+  font-size: 13px;
+}
+.modal .detail-text {
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+}
+.modal .delete-btn {
+  margin-top: 20px;
+  background: none;
+  border: 1px solid #5c4444;
+  color: #b08080;
+  padding: 8px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+}
+.modal .delete-btn:hover { background: rgba(176,128,128,0.1); }
+
+/* --- Graph Page --- */
+.graph-container {
+  padding: 16px 0;
+}
+.graph-canvas {
+  width: 100%;
+  height: 200px;
+}
+.graph-range {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.graph-range button {
+  padding: 6px 16px;
+  border-radius: 16px;
+  border: 1px solid #3a3a5a;
+  background: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+.graph-range button.active {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* --- Settings (Tag Edit) Modal --- */
+.settings-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 400;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.settings-modal.show { display: flex; }
+.settings-panel {
+  background: var(--bg-card);
+  border-radius: 20px;
+  width: calc(100% - 32px);
+  max-width: 400px;
+  max-height: 80dvh;
+  overflow-y: auto;
+  padding: 24px 20px;
+}
+.settings-panel h2 {
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+.tag-list-edit {
+  list-style: none;
+}
+.tag-list-edit li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #2a2a4a;
+}
+.tag-list-edit input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid #3a3a5a;
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.tag-list-edit input:focus { outline: none; border-color: var(--accent); }
+.tag-list-edit .del-tag {
+  background: none;
+  border: none;
+  color: #b08080;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.add-tag-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.add-tag-row input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid #3a3a5a;
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.add-tag-row input:focus { outline: none; border-color: var(--accent); }
+.add-tag-row button {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.settings-close {
+  margin-top: 16px;
+  background: none;
+  border: 1px solid #3a3a5a;
+  color: var(--text);
+  padding: 8px 0;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* --- Export Page --- */
+.export-section { padding: 12px 0; }
+.export-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1.5px solid #3a3a5a;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.export-btn:hover { border-color: var(--accent); }
+.export-btn .export-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* --- Page visibility --- */
+.page { display: none; }
+.page.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Record Page -->
+  <div id="page-record" class="page active">
+    <div class="header">
+      <h1>emlog</h1>
+      <div class="date" id="today-date"></div>
+    </div>
+
+    <div class="section-label">いまの気分は</div>
+    <div class="mood-selector" id="mood-selector">
+      <button class="mood-btn" data-mood="1"><span class="mood-label">しんどい</span></button>
+      <button class="mood-btn" data-mood="2"><span class="mood-label">いまいち</span></button>
+      <button class="mood-btn" data-mood="3"><span class="mood-label">ふつう</span></button>
+      <button class="mood-btn" data-mood="4"><span class="mood-label">良い</span></button>
+      <button class="mood-btn" data-mood="5"><span class="mood-label">すごく良い</span></button>
+    </div>
+
+    <div class="section-label" style="margin-top:36px">できごと<span style="font-size:11px;color:var(--text-dimmer)"> (任意)</span></div>
+    <div class="tags-container" id="tags-container"></div>
+
+    <div class="section-label">今日良かったこと・できたこと<span style="font-size:11px;color:var(--text-dimmer)"> (任意)</span></div>
+    <textarea class="text-area" id="good-things" placeholder="小さいことでOK。書けなければ空欄でも" rows="3"></textarea>
+    <button class="why-toggle" id="why-toggle">+ なぜできたか を書く</button>
+    <div id="why-section" style="display:none;margin-top:8px">
+      <textarea class="text-area" id="why-text" placeholder="自分のどんな工夫・選択が効いた?" rows="2"></textarea>
+    </div>
+  </div>
+
+  <!-- Calendar Page -->
+  <div id="page-calendar" class="page">
+    <div class="header">
+      <h1>カレンダー</h1>
+    </div>
+    <div class="month-nav">
+      <button id="prev-month">&lt;</button>
+      <span class="month-label" id="month-label"></span>
+      <button id="next-month">&gt;</button>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+  </div>
+
+  <!-- Graph Page -->
+  <div id="page-graph" class="page">
+    <div class="header">
+      <h1>推移</h1>
+    </div>
+    <div class="graph-container">
+      <canvas class="graph-canvas" id="graph-canvas"></canvas>
+    </div>
+    <div class="graph-range">
+      <button class="active" data-range="7">1週間</button>
+      <button data-range="14">2週間</button>
+      <button data-range="30">1ヶ月</button>
+    </div>
+  </div>
+
+  <!-- Export Page -->
+  <div id="page-export" class="page">
+    <div class="header">
+      <h1>エクスポート</h1>
+    </div>
+    <div class="export-section">
+      <button class="export-btn" id="export-md">
+        Markdown でエクスポート
+        <div class="export-desc">読書記録と地続きの形式</div>
+      </button>
+      <button class="export-btn" id="export-csv">
+        CSV でエクスポート
+        <div class="export-desc">スプレッドシートで分析用</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- Tag Settings Modal -->
+<div class="settings-modal" id="tag-settings">
+  <div class="settings-panel" id="tag-settings-panel"></div>
+</div>
+
+<!-- Save Toast -->
+<div class="save-toast" id="save-toast">保存しました</div>
+
+<!-- Nav -->
+<nav class="nav">
+  <button data-page="record" class="active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>
+    <span>きろく</span>
+  </button>
+  <button data-page="calendar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <span>カレンダー</span>
+  </button>
+  <button data-page="graph">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>推移</span>
+  </button>
+  <button data-page="export">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    <span>出力</span>
+  </button>
+</nav>
+
+<script>
+const MOOD_LABELS = ['', 'しんどい', 'いまいち', 'ふつう', '良い', 'すごく良い'];
+const MOOD_COLORS = ['', '#5c6b8a', '#7a8ba8', '#a0a0a0', '#a8c4a0', '#7db87d'];
+const DEFAULT_TAGS = ['仕事', '家族', '子ども', '読書', '睡眠', '運動', '休息', '通院・体調', '人間関係', 'お金'];
+
+function getDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function todayKey() { return getDateKey(new Date()); }
+
+function loadRecords() {
+  return JSON.parse(localStorage.getItem('emlog_records') || '{}');
+}
+function saveRecords(r) {
+  localStorage.setItem('emlog_records', JSON.stringify(r));
+}
+function loadTags() {
+  return JSON.parse(localStorage.getItem('emlog_tags') || 'null') || [...DEFAULT_TAGS];
+}
+function saveTags(t) {
+  localStorage.setItem('emlog_tags', JSON.stringify(t));
+}
+
+// --- State ---
+let currentMood = null;
+let selectedTags = new Set();
+let calendarDate = new Date();
+let graphRange = 7;
+
+// --- Init ---
+function init() {
+  renderDate();
+  renderTags();
+  loadTodayRecord();
+  renderCalendar();
+  renderGraph();
+  setupNav();
+  setupMood();
+  setupInputListeners();
+  setupExport();
+}
+
+function renderDate() {
+  const d = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('today-date').textContent =
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日(${days[d.getDay()]})`;
+}
+
+// --- Mood ---
+function setupMood() {
+  document.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mood = parseInt(btn.dataset.mood);
+      currentMood = mood;
+      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      autoSave();
+    });
+  });
+}
+
+// --- Tags ---
+function renderTags() {
+  const tags = loadTags();
+  const container = document.getElementById('tags-container');
+  container.innerHTML = '';
+  tags.forEach(tag => {
+    const btn = document.createElement('button');
+    btn.className = 'tag-btn' + (selectedTags.has(tag) ? ' selected' : '');
+    btn.textContent = tag;
+    btn.addEventListener('click', () => {
+      if (selectedTags.has(tag)) selectedTags.delete(tag);
+      else selectedTags.add(tag);
+      btn.classList.toggle('selected');
+      autoSave();
+    });
+    container.appendChild(btn);
+  });
+  const manageBtn = document.createElement('button');
+  manageBtn.className = 'tag-manage-btn';
+  manageBtn.textContent = '編集';
+  manageBtn.addEventListener('click', openTagSettings);
+  container.appendChild(manageBtn);
+}
+
+// --- Auto-save ---
+let saveTimeout;
+function autoSave() {
+  if (!currentMood) return;
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    const records = loadRecords();
+    const key = todayKey();
+    records[key] = {
+      mood: currentMood,
+      tags: [...selectedTags],
+      goodThings: document.getElementById('good-things').value.trim(),
+      why: document.getElementById('why-text').value.trim(),
+      updatedAt: new Date().toISOString()
+    };
+    saveRecords(records);
+    showToast();
+    renderCalendar();
+    renderGraph();
+  }, 400);
+}
+
+function showToast() {
+  const t = document.getElementById('save-toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1200);
+}
+
+function setupInputListeners() {
+  document.getElementById('good-things').addEventListener('input', autoSave);
+  document.getElementById('why-text').addEventListener('input', autoSave);
+  document.getElementById('why-toggle').addEventListener('click', () => {
+    const s = document.getElementById('why-section');
+    const visible = s.style.display !== 'none';
+    s.style.display = visible ? 'none' : 'block';
+    document.getElementById('why-toggle').textContent = visible ? '+ なぜできたか を書く' : '- なぜできたか を閉じる';
+  });
+}
+
+// --- Load today's record ---
+function loadTodayRecord() {
+  const records = loadRecords();
+  const rec = records[todayKey()];
+  if (!rec) return;
+  currentMood = rec.mood;
+  document.querySelectorAll('.mood-btn').forEach(b => {
+    if (parseInt(b.dataset.mood) === rec.mood) b.classList.add('selected');
+  });
+  selectedTags = new Set(rec.tags || []);
+  renderTags();
+  document.getElementById('good-things').value = rec.goodThings || '';
+  if (rec.why) {
+    document.getElementById('why-text').value = rec.why;
+    document.getElementById('why-section').style.display = 'block';
+    document.getElementById('why-toggle').textContent = '- なぜできたか を閉じる';
+  }
+}
+
+// --- Nav ---
+function setupNav() {
+  document.querySelectorAll('.nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = btn.dataset.page;
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + page).classList.add('active');
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (page === 'calendar') renderCalendar();
+      if (page === 'graph') renderGraph();
+    });
+  });
+}
+
+// --- Calendar ---
+function renderCalendar() {
+  const y = calendarDate.getFullYear();
+  const m = calendarDate.getMonth();
+  document.getElementById('month-label').textContent = `${y}年${m+1}月`;
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
+  const dayNames = ['月','火','水','木','金','土','日'];
+  dayNames.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-header';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+  const first = new Date(y, m, 1);
+  let startDay = first.getDay() - 1;
+  if (startDay < 0) startDay = 6;
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const records = loadRecords();
+  const today = todayKey();
+  for (let i = 0; i < startDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    el.className = 'cal-day';
+    el.textContent = d;
+    if (key === today) el.classList.add('today');
+    if (records[key]) {
+      el.classList.add('has-record');
+      el.style.background = MOOD_COLORS[records[key].mood];
+    }
+    el.addEventListener('click', () => showDetail(key));
+    grid.appendChild(el);
+  }
+  document.getElementById('prev-month').onclick = () => {
+    calendarDate.setMonth(calendarDate.getMonth() - 1);
+    renderCalendar();
+  };
+  document.getElementById('next-month').onclick = () => {
+    calendarDate.setMonth(calendarDate.getMonth() + 1);
+    renderCalendar();
+  };
+}
+
+// --- Detail Modal ---
+function showDetail(key) {
+  const records = loadRecords();
+  const rec = records[key];
+  if (!rec) return;
+  const parts = key.split('-');
+  const dateStr = `${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+  const modal = document.getElementById('modal-content');
+  let html = `
+    <div style="position:relative">
+      <button class="modal-close" onclick="closeDetail()">&times;</button>
+      <div class="modal-date">${dateStr}</div>
+      <div class="mood-display" style="background:${MOOD_COLORS[rec.mood]}">${MOOD_LABELS[rec.mood]}</div>
+  `;
+  if (rec.tags && rec.tags.length) {
+    html += `<div class="detail-section"><div class="detail-label">できごと</div><div class="detail-tags">`;
+    rec.tags.forEach(t => html += `<span class="detail-tag">${escapeHtml(t)}</span>`);
+    html += `</div></div>`;
+  }
+  if (rec.goodThings) {
+    html += `<div class="detail-section"><div class="detail-label">良かったこと・できたこと</div><div class="detail-text">${escapeHtml(rec.goodThings)}</div></div>`;
+  }
+  if (rec.why) {
+    html += `<div class="detail-section"><div class="detail-label">なぜできたか</div><div class="detail-text">${escapeHtml(rec.why)}</div></div>`;
+  }
+  html += `<button class="delete-btn" onclick="deleteRecord('${key}')">この記録を削除</button></div>`;
+  modal.innerHTML = html;
+  document.getElementById('detail-modal').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detail-modal').classList.remove('show');
+}
+
+function deleteRecord(key) {
+  if (!confirm('この記録を削除しますか？')) return;
+  const records = loadRecords();
+  delete records[key];
+  saveRecords(records);
+  closeDetail();
+  renderCalendar();
+  renderGraph();
+  if (key === todayKey()) {
+    currentMood = null;
+    selectedTags.clear();
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('good-things').value = '';
+    document.getElementById('why-text').value = '';
+    renderTags();
+  }
+}
+
+document.getElementById('detail-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('detail-modal')) closeDetail();
+});
+
+// --- Graph ---
+function renderGraph() {
+  const canvas = document.getElementById('graph-canvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const w = rect.width;
+  const h = rect.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const records = loadRecords();
+  const days = [];
+  const today = new Date();
+  for (let i = graphRange - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = getDateKey(d);
+    days.push({ date: d, key, record: records[key] || null });
+  }
+
+  const padL = 30, padR = 16, padT = 20, padB = 30;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  // Y axis labels
+  ctx.fillStyle = '#555';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 1; i <= 5; i++) {
+    const y = padT + plotH - ((i - 1) / 4) * plotH;
+    ctx.fillText(i, padL - 6, y + 4);
+    ctx.strokeStyle = '#2a2a4a';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+  }
+
+  // Plot points and lines
+  const points = [];
+  days.forEach((day, i) => {
+    const x = padL + (i / (graphRange - 1)) * plotW;
+    if (day.record) {
+      const y = padT + plotH - ((day.record.mood - 1) / 4) * plotH;
+      points.push({ x, y, mood: day.record.mood });
+    } else {
+      points.push(null);
+    }
+  });
+
+  // Lines
+  ctx.strokeStyle = 'rgba(168,196,160,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  let started = false;
+  points.forEach(p => {
+    if (!p) { started = false; return; }
+    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+    else ctx.lineTo(p.x, p.y);
+  });
+  ctx.stroke();
+
+  // Dots
+  points.forEach(p => {
+    if (!p) return;
+    ctx.fillStyle = MOOD_COLORS[p.mood];
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // X axis labels
+  ctx.fillStyle = '#555';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  const step = graphRange <= 14 ? 1 : 3;
+  days.forEach((day, i) => {
+    if (i % step !== 0 && i !== days.length - 1) return;
+    const x = padL + (i / (graphRange - 1)) * plotW;
+    ctx.fillText(`${day.date.getMonth()+1}/${day.date.getDate()}`, x, h - 6);
+  });
+
+  // Range buttons
+  document.querySelectorAll('.graph-range button').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.range) === graphRange);
+    btn.onclick = () => {
+      graphRange = parseInt(btn.dataset.range);
+      renderGraph();
+    };
+  });
+}
+
+// --- Tag Settings ---
+function openTagSettings() {
+  const tags = loadTags();
+  const panel = document.getElementById('tag-settings-panel');
+  let html = '<h2>タグを編集</h2><ul class="tag-list-edit">';
+  tags.forEach((tag, i) => {
+    html += `<li><input type="text" value="${escapeHtml(tag)}" data-idx="${i}"><button class="del-tag" data-idx="${i}">&times;</button></li>`;
+  });
+  html += `</ul>
+    <div class="add-tag-row"><input type="text" id="new-tag-input" placeholder="新しいタグ"><button id="add-tag-btn">追加</button></div>
+    <button class="settings-close" id="close-tag-settings">閉じる</button>`;
+  panel.innerHTML = html;
+  document.getElementById('tag-settings').classList.add('show');
+
+  panel.querySelectorAll('.del-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      const t = loadTags();
+      t.splice(idx, 1);
+      saveTags(t);
+      selectedTags.delete(tags[idx]);
+      openTagSettings();
+      renderTags();
+    });
+  });
+  panel.querySelectorAll('.tag-list-edit input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const t = loadTags();
+      const idx = parseInt(inp.dataset.idx);
+      const oldName = t[idx];
+      t[idx] = inp.value.trim();
+      saveTags(t);
+      if (selectedTags.has(oldName)) {
+        selectedTags.delete(oldName);
+        selectedTags.add(t[idx]);
+      }
+      renderTags();
+    });
+  });
+  document.getElementById('add-tag-btn').addEventListener('click', () => {
+    const v = document.getElementById('new-tag-input').value.trim();
+    if (!v) return;
+    const t = loadTags();
+    t.push(v);
+    saveTags(t);
+    openTagSettings();
+    renderTags();
+  });
+  document.getElementById('close-tag-settings').addEventListener('click', () => {
+    document.getElementById('tag-settings').classList.remove('show');
+  });
+}
+
+document.getElementById('tag-settings').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('tag-settings')) {
+    document.getElementById('tag-settings').classList.remove('show');
+  }
+});
+
+// --- Export ---
+function setupExport() {
+  document.getElementById('export-md').addEventListener('click', exportMarkdown);
+  document.getElementById('export-csv').addEventListener('click', exportCSV);
+}
+
+function exportMarkdown() {
+  const records = loadRecords();
+  const keys = Object.keys(records).sort();
+  if (!keys.length) { alert('記録がありません'); return; }
+  let md = '# emlog 記録\n\n';
+  keys.forEach(key => {
+    const r = records[key];
+    md += `## ${key}\n`;
+    md += `- 気分: ${MOOD_LABELS[r.mood]} (${r.mood}/5)\n`;
+    if (r.tags && r.tags.length) md += `- できごと: ${r.tags.join(', ')}\n`;
+    if (r.goodThings) md += `- 良かったこと: ${r.goodThings}\n`;
+    if (r.why) md += `- なぜできたか: ${r.why}\n`;
+    md += '\n';
+  });
+  downloadFile('emlog.md', md, 'text/markdown');
+}
+
+function exportCSV() {
+  const records = loadRecords();
+  const keys = Object.keys(records).sort();
+  if (!keys.length) { alert('記録がありません'); return; }
+  let csv = '日付,気分,気分ラベル,タグ,良かったこと,なぜできたか\n';
+  keys.forEach(key => {
+    const r = records[key];
+    csv += `${key},${r.mood},${MOOD_LABELS[r.mood]},"${(r.tags||[]).join('; ')}","${(r.goodThings||'').replace(/"/g,'""')}","${(r.why||'').replace(/"/g,'""')}"\n`;
+  });
+  downloadFile('emlog.csv', csv, 'text/csv');
+}
+
+function downloadFile(name, content, type) {
+  const blob = new Blob([content], { type: type + ';charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+window.addEventListener('resize', () => renderGraph());
+init();
+</script>
+</body>
+</html>
