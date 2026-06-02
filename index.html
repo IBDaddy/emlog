@@ -3,1842 +3,260 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#1a1a2e">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>emlog — prototype</title>
 <link rel="manifest" href="manifest.json">
-<title>emlog</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --mood-1: #5c6b8a;
-  --mood-2: #7a8ba8;
-  --mood-3: #a0a0a0;
-  --mood-4: #a8c4a0;
-  --mood-5: #7db87d;
-  --bg: #1a1a2e;
-  --bg-card: #25253e;
-  --bg-input: #2d2d4a;
-  --text: #e0e0e0;
-  --text-dim: #888;
-  --text-dimmer: #555;
-  --accent: #a8c4a0;
-  --radius: 14px;
+:root{
+  --bg:#000000; --canvas:#0b0b0f;
+  --text:#f4f4f6; --dim:#7e7e88; --dimmer:#4f4f59;
+  --glass:rgba(255,255,255,.045);
+  --glass-2:rgba(255,255,255,.07);
+  --glass-line:rgba(255,255,255,.09);
+  --hair:rgba(255,255,255,.06);
+  --ac:#f3aa78; --ac2:#f6c39c; --glow:rgba(243,170,120,.30);
+  --m1:#586588; --m2:#76859f; --m3:#9a9aa4; --m4:#efb98e; --m5:#f3aa78;
+  --danger:#d98a8a;
+  --sans:'Zen Kaku Gothic New','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'Space Grotesk',ui-monospace,sans-serif;
 }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  background:var(--canvas);color:var(--text);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;
+  min-height:100dvh;overflow:hidden;
+}
+/* device frame */
+#root{display:flex;align-items:center;justify-content:center;}
+.device{
+  width:390px;height:min(844px,100dvh);background:var(--bg);position:relative;overflow:hidden;
+  border-radius:46px;box-shadow:0 50px 120px -30px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.05);
+  display:flex;flex-direction:column;
+}
+@media (max-width:430px){ .device{border-radius:0;height:100dvh;width:100vw;} body{background:#000;} }
 
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* ambient accent glow */
+.aura{position:absolute;top:-130px;left:50%;transform:translateX(-50%);width:420px;height:420px;
+  border-radius:50%;pointer-events:none;background:radial-gradient(circle,var(--glow),transparent 70%);z-index:0;}
+.aura.b{top:auto;bottom:70px;left:-70px;width:260px;height:260px;opacity:.45;transform:none;
+  background:radial-gradient(circle,var(--glow),transparent 70%);}
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100dvh;
-  overflow-x: hidden;
-}
+.status{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;
+  padding:16px 28px 6px;font-family:var(--mono);font-size:13px;color:var(--dim);font-weight:500;
+  position:relative;z-index:3;letter-spacing:.3px;}
+.status .r{display:flex;gap:6px;align-items:center;}
 
-.app {
-  max-width: 430px;
-  margin: 0 auto;
-  padding: 0 16px 100px;
-  position: relative;
-}
+.screen{flex:1;min-height:0;position:relative;z-index:2;display:flex;flex-direction:column;}
+.scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 28px 16px;
+  scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
 
-/* --- Nav --- */
-.nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #16162b;
-  border-top: 1px solid #2a2a4a;
-  display: flex;
-  justify-content: center;
-  gap: 0;
-  padding: 8px 0 env(safe-area-inset-bottom, 8px);
-  z-index: 100;
-}
-.nav button {
-  flex: 1;
-  max-width: 120px;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 11px;
-  padding: 6px 0 2px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  transition: color 0.15s;
-}
-.nav button.active { color: var(--accent); }
-.nav button svg { width: 24px; height: 24px; }
+/* ---------- shared type ---------- */
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:4px;text-transform:uppercase;
+  color:var(--ac);font-weight:600;}
+.greet{font-size:39px;font-weight:300;letter-spacing:-1.5px;line-height:1.0;margin-top:14px;}
+.h1{font-size:30px;font-weight:300;letter-spacing:-1px;}
+.lbl{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--dim);font-weight:600;}
+.hero{padding:22px 2px 20px;}
+.sec{margin-bottom:24px;}
+.sec>.lbl{display:block;margin-bottom:16px;}
 
-/* --- Header --- */
-.header {
-  padding: 20px 0 12px;
-  text-align: center;
-}
-.header h1 {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-.header .date {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-top: 4px;
-}
+/* ---------- mood ---------- */
+.moods{display:flex;justify-content:space-between;align-items:center;padding:6px 0;}
+.mood{display:flex;flex-direction:column;align-items:center;gap:11px;flex:1;cursor:pointer;
+  background:none;border:none;}
+.dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  transition:.35s cubic-bezier(.34,1.45,.5,1);}
+.face{width:66%;height:66%;display:block;}
+.mood:active .dot{transform:scale(.9);}
+.moods.has .mood:not(.sel){opacity:.38;}
+.mood.sel .dot{width:58px;height:58px;box-shadow:0 12px 40px -8px var(--glow),0 0 0 1px rgba(255,255,255,.14);}
+.mw{font-size:12.5px;font-weight:600;color:var(--text);letter-spacing:.5px;height:0;overflow:hidden;}
+.moods.has .mood.sel .mw{height:auto;}
+.moods:not(.has) .mw{color:var(--dim);font-weight:500;height:0;}
 
-/* --- Record Page --- */
-.section-label {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin: 24px 0 10px;
-  padding-left: 2px;
-}
+/* ---------- chips ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:10px;}
+.chip{padding:11px 17px;border-radius:18px;font-size:13.5px;color:var(--dim);font-weight:500;
+  display:inline-flex;gap:7px;align-items:center;background:var(--glass);cursor:pointer;border:none;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:.18s;}
+.chip:active{transform:scale(.95);}
+.chip.on{color:var(--text);font-weight:600;background:color-mix(in srgb,var(--ac) 18%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 38%,transparent);}
+.chip.ghost{background:none;box-shadow:inset 0 0 0 1px var(--hair);color:var(--dimmer);}
 
-.mood-selector {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  padding: 8px 0;
-}
-.mood-btn {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 3px solid transparent;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  position: relative;
-}
-.mood-btn:active { transform: scale(0.92); }
-.mood-selector.has-selection .mood-btn:not(.selected) {
-  opacity: 0.35;
-  transform: scale(0.9);
-}
-.mood-btn.selected {
-  border-color: #fff;
-  transform: scale(1.15);
-  box-shadow: 0 0 20px rgba(255,255,255,0.2), 0 0 40px rgba(255,255,255,0.05);
-  opacity: 1;
-}
-.mood-btn .mood-label {
-  position: absolute;
-  bottom: -20px;
-  font-size: 10px;
-  white-space: nowrap;
-  color: var(--text-dimmer);
-  transition: all 0.25s;
-}
-.mood-selector.has-selection .mood-btn:not(.selected) .mood-label { opacity: 0.4; }
-.mood-btn.selected .mood-label { color: var(--text); font-weight: 600; }
+/* ---------- glass card + inputs ---------- */
+.card{background:var(--glass);backdrop-filter:blur(24px) saturate(1.5);
+  -webkit-backdrop-filter:blur(24px) saturate(1.5);border-radius:28px;padding:20px;
+  box-shadow:inset 0 1px 0 var(--glass-line),0 20px 50px -34px rgba(0,0,0,.85);}
+textarea.ta{width:100%;background:none;border:none;outline:none;color:var(--text);
+  font-family:var(--sans);font-size:15.5px;line-height:1.85;letter-spacing:.2px;resize:none;
+  min-height:48px;}
+textarea.ta::placeholder{color:var(--dimmer);}
+.why{max-height:0;overflow:hidden;opacity:0;transition:max-height .4s cubic-bezier(.22,.9,.3,1),opacity .3s,margin .3s,padding .3s;}
+.why.show{max-height:240px;opacity:1;margin-top:16px;padding-top:16px;border-top:1px solid var(--hair);}
+.why .wl{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--ac);font-weight:600;margin-bottom:8px;}
+.why textarea.ta{font-size:14px;color:var(--dim);min-height:36px;}
 
-.mood-btn[data-mood="1"] { background: var(--mood-1); }
-.mood-btn[data-mood="2"] { background: var(--mood-2); }
-.mood-btn[data-mood="3"] { background: var(--mood-3); }
-.mood-btn[data-mood="4"] { background: var(--mood-4); }
-.mood-btn[data-mood="5"] { background: var(--mood-5); }
+/* ---------- memory ---------- */
+.mem{margin-top:16px;display:flex;flex-direction:column;gap:12px;}
+.mem-row{display:flex;gap:13px;align-items:center;padding:2px 4px;cursor:pointer;}
+.mem-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 12px var(--glow);}
+.mem-when{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--ac);font-weight:600;white-space:nowrap;}
+.mem-text{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* --- Tags --- */
-.tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 4px 0;
-}
-.tag-btn {
-  padding: 7px 14px;
-  border-radius: 20px;
-  border: 1.5px solid #3a3a5a;
-  background: var(--bg-card);
-  color: var(--text-dim);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.tag-btn .tag-icon { font-size: 14px; line-height: 1; }
-.tag-btn:active { transform: scale(0.95); }
-.tag-btn.selected {
-  border-color: var(--accent);
-  color: var(--text);
-  background: rgba(168, 196, 160, 0.12);
-}
-.tag-manage-btn {
-  padding: 7px 12px;
-  border-radius: 20px;
-  border: 1.5px dashed #3a3a5a;
-  background: none;
-  color: var(--text-dimmer);
-  font-size: 13px;
-  cursor: pointer;
-}
+/* ---------- nav ---------- */
+.nav{flex:0 0 auto;position:relative;z-index:3;margin:0 22px 22px;border-radius:28px;
+  background:rgba(20,20,22,.55);backdrop-filter:blur(30px) saturate(1.4);
+  -webkit-backdrop-filter:blur(30px) saturate(1.4);
+  box-shadow:inset 0 1px 0 var(--glass-line),0 20px 50px -20px rgba(0,0,0,.7);
+  display:flex;align-items:center;padding:13px 12px;}
+.tab{flex:1;display:flex;justify-content:center;align-items:center;gap:8px;color:var(--dimmer);
+  background:none;border:none;cursor:pointer;transition:.2s;height:34px;}
+.tab .ic{width:23px;height:23px;}
+.tab .tl{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.3px;
+  max-width:0;overflow:hidden;white-space:nowrap;transition:max-width .3s;}
+.tab.on{color:var(--ac);flex:0 0 auto;padding:0 17px;border-radius:18px;
+  background:color-mix(in srgb,var(--ac) 16%,transparent);}
+.tab.on .tl{max-width:90px;}
 
-/* --- Text inputs --- */
-.text-area {
-  width: 100%;
-  min-height: 72px;
-  background: var(--bg-input);
-  border: 1.5px solid #3a3a5a;
-  border-radius: var(--radius);
-  color: var(--text);
-  font-size: 14px;
-  padding: 12px;
-  resize: vertical;
-  font-family: inherit;
-  line-height: 1.6;
-  transition: border-color 0.2s;
-}
-.text-area:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-.text-area::placeholder { color: var(--text-dimmer); }
+/* ---------- toast ---------- */
+.toast{position:absolute;top:60px;left:50%;transform:translateX(-50%) translateY(-16px);
+  background:color-mix(in srgb,var(--ac) 88%,#000);color:#1a1208;font-weight:700;font-size:13px;
+  padding:9px 20px;border-radius:18px;opacity:0;transition:.35s cubic-bezier(.22,.9,.3,1);
+  pointer-events:none;z-index:50;backdrop-filter:blur(8px);box-shadow:0 14px 36px -10px var(--glow);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-#why-section {
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
-  margin-top: 0;
-}
-#why-section.visible {
-  max-height: 200px;
-  opacity: 1;
-  margin-top: 10px;
-}
-#why-section .why-label {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-#why-section .why-label::before {
-  content: '';
-  display: inline-block;
-  width: 3px;
-  height: 12px;
-  background: var(--accent);
-  border-radius: 2px;
-}
+/* ---------- calendar ---------- */
+.seg{display:flex;background:var(--glass);border-radius:16px;padding:4px;width:fit-content;margin:0 auto 18px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+.seg button{border:none;background:none;color:var(--dim);font-family:var(--mono);font-size:12px;
+  font-weight:600;letter-spacing:1px;padding:7px 20px;border-radius:13px;cursor:pointer;transition:.2s;}
+.seg button.on{background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac);}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cal-nav button{background:var(--glass);border:none;color:var(--text);width:38px;height:38px;
+  border-radius:13px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:.18s;}
+.cal-nav button:active{transform:scale(.92);}
+.cal-label{font-size:17px;font-weight:600;letter-spacing:.5px;}
+.cal-label .yr{color:var(--dim);font-family:var(--mono);font-size:13px;margin-left:6px;}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.dow{font-family:var(--mono);font-size:10px;color:var(--dimmer);text-align:center;padding:2px 0 6px;letter-spacing:1px;}
+.cell{aspect-ratio:1/1.12;border-radius:14px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;font-family:var(--mono);font-size:12px;color:var(--dim);cursor:pointer;
+  background:var(--glass);transition:.18s;position:relative;}
+.cell.empty{background:none;cursor:default;}
+.cell.future{opacity:.3;cursor:default;}
+.cell.rec{color:#1a1208;font-weight:700;}
+.cell.today{box-shadow:inset 0 0 0 1.5px var(--ac);}
+.cell:not(.empty):not(.future):active{transform:scale(.93);}
+.cell .cdot{width:4px;height:4px;border-radius:50%;background:rgba(0,0,0,.45);}
+.cell.norec .cdot{display:none;}
+.cell.norec{color:var(--dimmer);}
+/* year pixels */
+.ygrid{display:flex;flex-direction:column;gap:3px;}
+.yrow{display:grid;grid-template-columns:20px repeat(31,1fr);gap:3px;align-items:center;}
+.yml{font-family:var(--mono);font-size:9px;color:var(--dimmer);text-align:right;padding-right:2px;}
+.ycell{aspect-ratio:1;border-radius:3px;background:var(--glass-2);cursor:pointer;}
+.ycell.blank{background:none;cursor:default;}
+.ycell.future{background:rgba(255,255,255,.02);cursor:default;}
+.ylegend{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:18px;
+  font-family:var(--mono);font-size:9px;color:var(--dimmer);letter-spacing:.5px;}
+.ylegend .cells{display:flex;gap:4px;}
+.ylegend .lc{width:13px;height:13px;border-radius:4px;}
 
-/* --- Memories --- */
-.memories {
-  margin-top: 28px;
-}
-.memory-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  background: rgba(168,196,160,0.05);
-  border-radius: 10px;
-  border-left: 2px solid rgba(168,196,160,0.25);
-  margin-bottom: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.memory-card:hover { background: rgba(168,196,160,0.1); }
-.memory-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-.memory-body { flex: 1; min-width: 0; }
-.memory-when {
-  font-size: 11px;
-  color: var(--accent);
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-.memory-text {
-  font-size: 12px;
-  color: var(--text-dim);
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
+/* ---------- insights ---------- */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.tile{background:var(--glass);border-radius:22px;padding:18px 10px;text-align:center;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 var(--glass-line);}
+.tile .v{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--text);letter-spacing:-.5px;}
+.tile .v small{font-size:12px;color:var(--dim);font-weight:500;}
+.tile .t{font-size:11px;color:var(--dim);margin-top:5px;}
+.dist-row{display:flex;align-items:center;gap:11px;margin-bottom:11px;}
+.dist-face{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.dist-name{font-size:12.5px;color:var(--dim);width:62px;flex-shrink:0;}
+.bar-wrap{flex:1;height:8px;background:var(--glass-2);border-radius:5px;overflow:hidden;}
+.bar{height:100%;border-radius:5px;transition:width .6s cubic-bezier(.22,.9,.3,1);}
+.dist-n{font-family:var(--mono);font-size:11px;color:var(--dimmer);width:24px;text-align:right;}
+.tag-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:14px;}
+.tag-row .nm{flex:1;}
+.tag-row .ct{font-family:var(--mono);font-size:12px;color:var(--dim);}
+.empty-note{font-size:13px;color:var(--dimmer);padding:6px 2px;line-height:1.7;}
 
-/* --- Save feedback --- */
-.save-toast {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-50px);
-  background: rgba(168,196,160,0.9);
-  color: #1a1a2e;
-  padding: 8px 20px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  opacity: 0;
-  transition: all 0.3s ease;
-  pointer-events: none;
-  z-index: 200;
-  backdrop-filter: blur(8px);
-}
-.save-toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
+/* ---------- export ---------- */
+.exp-btn{width:100%;text-align:left;background:var(--glass);border:none;border-radius:24px;
+  padding:20px;color:var(--text);cursor:pointer;margin-bottom:12px;display:flex;align-items:center;gap:16px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 var(--glass-line);transition:.18s;}
+.exp-btn:active{transform:scale(.98);}
+.exp-ic{width:42px;height:42px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--ac) 16%,transparent);color:var(--ac);}
+.exp-ic svg{width:22px;height:22px;}
+.exp-btn .nm{font-size:15px;font-weight:600;}
+.exp-btn .ds{font-size:12px;color:var(--dim);margin-top:3px;}
 
-/* --- Calendar Page --- */
-.cal-mode-toggle {
-  display: flex;
-  justify-content: center;
-  gap: 0;
-  margin: 4px auto 8px;
-  width: fit-content;
-  background: var(--bg-card);
-  border-radius: 20px;
-  padding: 3px;
-}
-.cal-mode-toggle button {
-  padding: 6px 22px;
-  border: none;
-  background: none;
-  color: var(--text-dim);
-  font-size: 13px;
-  border-radius: 18px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.cal-mode-toggle button.active {
-  background: var(--accent);
-  color: var(--bg);
-  font-weight: 600;
-}
-
-.month-nav, .year-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 12px 0;
-}
-.month-nav button, .year-nav button {
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 12px;
-}
-.month-nav .month-label, .year-nav .year-label {
-  font-size: 16px;
-  font-weight: 600;
-  min-width: 140px;
-  text-align: center;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  padding: 4px 0;
-}
-.cal-header {
-  font-size: 11px;
-  color: var(--text-dimmer);
-  text-align: center;
-  padding: 4px 0;
-}
-.cal-day {
-  aspect-ratio: 1 / 1.2;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
-  gap: 3px;
-}
-.cal-day:not(.empty):not(.future):hover { opacity: 0.8; }
-.cal-day.today {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-.cal-day.has-record { color: #fff; font-weight: 600; }
-.cal-day.empty { cursor: default; }
-.cal-day.future { color: var(--text-dimmer); opacity: 0.4; cursor: default; }
-.cal-day.no-record:not(.empty):not(.future) { cursor: pointer; }
-.cal-day.no-record:not(.empty):not(.future):hover { background: rgba(255,255,255,0.05); }
-.cal-day .cal-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.7);
-}
-.cal-day.no-record .cal-dot { display: none; }
-
-/* --- Year in Pixels --- */
-.year-grid { padding: 4px 0; }
-.year-row {
-  display: grid;
-  grid-template-columns: 24px repeat(31, 1fr);
-  gap: 2px;
-  margin-bottom: 2px;
-  align-items: center;
-}
-.year-month-label {
-  font-size: 10px;
-  color: var(--text-dimmer);
-  text-align: right;
-  padding-right: 4px;
-}
-.year-cell {
-  aspect-ratio: 1;
-  border-radius: 2px;
-  background: #2a2a44;
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-.year-cell.has-record { cursor: pointer; }
-.year-cell.blank { background: none; cursor: default; }
-.year-cell.future { background: #20203a; cursor: default; }
-.year-cell:not(.blank):not(.future):active { transform: scale(1.4); }
-.year-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 16px;
-  font-size: 10px;
-  color: var(--text-dimmer);
-}
-.year-legend .legend-cells { display: flex; gap: 3px; }
-.year-legend .legend-cell { width: 12px; height: 12px; border-radius: 3px; }
-
-/* --- Detail Modal --- */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  z-index: 300;
-  display: none;
-  align-items: flex-end;
-  justify-content: center;
-}
-.modal-overlay.show { display: flex; }
-.modal {
-  background: var(--bg-card);
-  border-radius: 20px 20px 0 0;
-  width: 100%;
-  max-width: 430px;
-  max-height: 80dvh;
-  overflow-y: auto;
-  padding: 24px 20px 40px;
-  animation: slideUp 0.3s ease;
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-.modal .modal-date {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-.modal .mood-display {
-  display: inline-block;
-  padding: 6px 16px;
-  border-radius: 20px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-.modal .detail-section { margin-top: 16px; }
-.modal .detail-label {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-}
-.modal .detail-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.modal .detail-tag {
-  padding: 4px 12px;
-  border-radius: 14px;
-  background: rgba(168,196,160,0.12);
-  border: 1px solid rgba(168,196,160,0.3);
-  color: var(--text);
-  font-size: 13px;
-}
-.modal .detail-text {
-  font-size: 14px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  color: var(--text);
-}
-.modal-close {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 20px;
-  cursor: pointer;
-}
-.modal .delete-btn {
-  margin-top: 20px;
-  background: none;
-  border: 1px solid #5c4444;
-  color: #b08080;
-  padding: 8px 20px;
-  border-radius: 10px;
-  font-size: 13px;
-  cursor: pointer;
-  width: 100%;
-}
-.modal .delete-btn:hover { background: rgba(176,128,128,0.1); }
-
-.modal .new-record-section { margin-top: 12px; }
-.modal .new-record-section .section-label { margin: 16px 0 8px; }
-.modal .new-record-mood {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  margin: 8px 0;
-}
-.modal .new-mood-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 11px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.modal .new-mood-btn.selected {
-  border-color: #fff;
-  transform: scale(1.15);
-  box-shadow: 0 0 12px rgba(255,255,255,0.15);
-}
-.modal .new-mood-btn[data-mood="1"] { background: var(--mood-1); }
-.modal .new-mood-btn[data-mood="2"] { background: var(--mood-2); }
-.modal .new-mood-btn[data-mood="3"] { background: var(--mood-3); }
-.modal .new-mood-btn[data-mood="4"] { background: var(--mood-4); }
-.modal .new-mood-btn[data-mood="5"] { background: var(--mood-5); }
-.modal .save-new-btn {
-  margin-top: 16px;
-  width: 100%;
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
-  background: var(--accent);
-  color: var(--bg);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.modal .save-new-btn:disabled { opacity: 0.3; cursor: default; }
-
-/* --- Stats Page --- */
-.graph-container { padding: 16px 0; }
-.graph-canvas { width: 100%; height: 200px; }
-.graph-range {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-.graph-range button {
-  padding: 6px 16px;
-  border-radius: 16px;
-  border: 1px solid #3a3a5a;
-  background: none;
-  color: var(--text-dim);
-  font-size: 12px;
-  cursor: pointer;
-}
-.graph-range button.active {
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 24px;
-}
-.stat-card {
-  background: var(--bg-card);
-  border-radius: 12px;
-  padding: 14px 8px;
-  text-align: center;
-}
-.stat-card .stat-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text);
-}
-.stat-card .stat-unit {
-  font-size: 11px;
-  color: var(--text-dim);
-  font-weight: 400;
-}
-.stat-card .stat-label {
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-top: 4px;
-}
-
-.stat-block { margin-top: 24px; }
-.stat-block-title {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-bottom: 10px;
-}
-.mood-dist-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.mood-dist-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.mood-dist-name {
-  font-size: 12px;
-  color: var(--text-dim);
-  width: 64px;
-  flex-shrink: 0;
-}
-.mood-dist-bar-wrap {
-  flex: 1;
-  height: 8px;
-  background: #2a2a44;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.mood-dist-bar { height: 100%; border-radius: 4px; transition: width 0.4s; }
-.mood-dist-count {
-  font-size: 11px;
-  color: var(--text-dimmer);
-  width: 28px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.top-tag-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: var(--text);
-}
-.top-tag-name { flex: 1; }
-.top-tag-count { color: var(--text-dim); font-size: 12px; }
-
-/* --- Goals --- */
-.goal-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: var(--bg-card);
-  border-radius: 12px;
-  margin-bottom: 8px;
-}
-.goal-info { flex: 1; min-width: 0; }
-.goal-title { font-size: 13px; color: var(--text); margin-bottom: 6px; }
-.goal-bar-wrap {
-  height: 8px;
-  background: #2a2a44;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.goal-bar {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 4px;
-  transition: width 0.4s;
-}
-.goal-count {
-  font-size: 12px;
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-.goal-del {
-  background: none;
-  border: none;
-  color: #b08080;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0 2px;
-}
-.goal-add-form {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.goal-add-form select, .goal-add-form input {
-  background: var(--bg-input);
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  color: var(--text);
-  padding: 7px 10px;
-  font-size: 13px;
-  font-family: inherit;
-}
-.goal-add-form select { flex: 1; min-width: 100px; }
-.goal-add-form input { width: 56px; text-align: center; }
-.goal-add-form .goal-add-btn {
-  background: var(--accent);
-  color: var(--bg);
-  border: none;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.goal-empty { font-size: 12px; color: var(--text-dimmer); padding: 8px 0; }
-
-/* --- Settings (Tag Edit) Modal --- */
-.settings-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  z-index: 400;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-.settings-modal.show { display: flex; }
-.settings-panel {
-  background: var(--bg-card);
-  border-radius: 20px;
-  width: calc(100% - 32px);
-  max-width: 400px;
-  max-height: 80dvh;
-  overflow-y: auto;
-  padding: 24px 20px;
-}
-.settings-panel h2 { font-size: 16px; margin-bottom: 16px; }
-.tag-list-edit { list-style: none; }
-.tag-list-edit li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid #2a2a4a;
-}
-.tag-list-edit .icon-input {
-  width: 42px;
-  text-align: center;
-  background: var(--bg-input);
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  color: var(--text);
-  padding: 6px 4px;
-  font-size: 16px;
-  font-family: inherit;
-}
-.tag-list-edit .name-input {
-  flex: 1;
-  background: var(--bg-input);
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  color: var(--text);
-  padding: 6px 10px;
-  font-size: 14px;
-  font-family: inherit;
-}
-.tag-list-edit input:focus { outline: none; border-color: var(--accent); }
-.tag-list-edit .del-tag {
-  background: none;
-  border: none;
-  color: #b08080;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0 4px;
-}
-.add-tag-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-.add-tag-row .icon-input {
-  width: 42px;
-  text-align: center;
-  background: var(--bg-input);
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  color: var(--text);
-  padding: 6px 4px;
-  font-size: 16px;
-  font-family: inherit;
-}
-.add-tag-row .name-input {
-  flex: 1;
-  background: var(--bg-input);
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  color: var(--text);
-  padding: 6px 10px;
-  font-size: 14px;
-  font-family: inherit;
-}
-.add-tag-row input:focus { outline: none; border-color: var(--accent); }
-.add-tag-row button {
-  background: var(--accent);
-  color: var(--bg);
-  border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  font-weight: 600;
-}
-.settings-close {
-  margin-top: 16px;
-  background: none;
-  border: 1px solid #3a3a5a;
-  color: var(--text);
-  padding: 8px 0;
-  border-radius: 10px;
-  font-size: 14px;
-  cursor: pointer;
-  width: 100%;
-}
-
-/* --- Export Page --- */
-.export-section { padding: 12px 0; }
-.export-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: var(--radius);
-  border: 1.5px solid #3a3a5a;
-  background: var(--bg-card);
-  color: var(--text);
-  font-size: 14px;
-  cursor: pointer;
-  margin-bottom: 10px;
-  text-align: left;
-}
-.export-btn:hover { border-color: var(--accent); }
-.export-btn .export-desc {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-top: 4px;
-}
-
-/* --- Page visibility --- */
-.page { display: none; }
-.page.active { display: block; }
+/* ---------- bottom sheet ---------- */
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;
+  align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s;}
+.overlay.show{opacity:1;pointer-events:auto;}
+.sheet{width:100%;background:rgba(24,22,24,.82);backdrop-filter:blur(34px) saturate(1.5);
+  -webkit-backdrop-filter:blur(34px) saturate(1.5);border-radius:34px 34px 0 0;
+  box-shadow:inset 0 1px 0 var(--glass-line);padding:14px 24px calc(28px + env(safe-area-inset-bottom));
+  max-height:86%;overflow-y:auto;transform:translateY(100%);transition:transform .34s cubic-bezier(.22,.9,.3,1);
+  scrollbar-width:none;}
+.sheet::-webkit-scrollbar{display:none;}
+.overlay.show .sheet{transform:none;}
+.grab{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);margin:0 auto 16px;}
+.sheet-date{font-size:18px;font-weight:600;letter-spacing:.3px;margin-bottom:14px;}
+.mood-pill{display:inline-flex;align-items:center;gap:9px;padding:8px 16px 8px 8px;border-radius:20px;
+  font-size:14px;font-weight:600;color:#1a1208;margin-bottom:6px;}
+.mood-pill .mp-face{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.12);}
+.d-sec{margin-top:18px;}
+.d-lbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+.d-text{font-size:14.5px;line-height:1.8;color:var(--text);white-space:pre-wrap;}
+.d-tags{display:flex;flex-wrap:wrap;gap:8px;}
+.d-tag{padding:6px 13px;border-radius:14px;font-size:13px;color:var(--text);
+  background:color-mix(in srgb,var(--ac) 14%,transparent);box-shadow:inset 0 0 0 1px var(--hair);
+  display:inline-flex;gap:6px;align-items:center;}
+.del-btn{margin-top:24px;width:100%;background:none;border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);
+  color:var(--danger);padding:13px;border-radius:16px;font-size:14px;font-family:var(--sans);cursor:pointer;transition:.18s;}
+.del-btn:active{transform:scale(.98);background:color-mix(in srgb,var(--danger) 12%,transparent);}
+.sheet .moods{margin:8px 0 4px;}
+.primary{margin-top:22px;width:100%;background:var(--ac);color:#1a1208;border:none;border-radius:18px;
+  padding:15px;font-size:15px;font-weight:700;font-family:var(--sans);cursor:pointer;transition:.18s;
+  box-shadow:0 14px 36px -12px var(--glow);}
+.primary:disabled{opacity:.3;box-shadow:none;cursor:default;}
+.primary:not(:disabled):active{transform:scale(.98);}
+.sheet .ta-card{margin-top:12px;}
+/* tag manager */
+.tm-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--hair);}
+.tm-ic{width:46px;text-align:center;background:var(--glass-2);border:none;border-radius:12px;color:var(--text);
+  padding:9px 4px;font-size:17px;font-family:var(--sans);}
+.tm-nm{flex:1;background:var(--glass-2);border:none;border-radius:12px;color:var(--text);
+  padding:9px 12px;font-size:14px;font-family:var(--sans);outline:none;}
+.tm-nm:focus,.tm-ic:focus{outline:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 50%,transparent);}
+.tm-del{background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;}
+.tm-add{display:flex;gap:9px;margin-top:14px;}
+.tm-add .primary{margin-top:0;padding:0 18px;flex:0 0 auto;width:auto;}
 </style>
 </head>
 <body>
+<div id="root"></div>
 
-<div class="app">
-  <!-- Record Page -->
-  <div id="page-record" class="page active">
-    <div class="header">
-      <h1>emlog</h1>
-      <div class="date" id="today-date"></div>
-    </div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
-    <div class="section-label">いまの気分は</div>
-    <div class="mood-selector" id="mood-selector">
-      <button class="mood-btn" data-mood="1"><span class="mood-label">しんどい</span></button>
-      <button class="mood-btn" data-mood="2"><span class="mood-label">いまいち</span></button>
-      <button class="mood-btn" data-mood="3"><span class="mood-label">ふつう</span></button>
-      <button class="mood-btn" data-mood="4"><span class="mood-label">良い</span></button>
-      <button class="mood-btn" data-mood="5"><span class="mood-label">すごく良い</span></button>
-    </div>
-
-    <div class="section-label" style="margin-top:36px">できごと<span style="font-size:11px;color:var(--text-dimmer)"> (任意)</span></div>
-    <div class="tags-container" id="tags-container"></div>
-
-    <div class="section-label">今日良かったこと・できたこと<span style="font-size:11px;color:var(--text-dimmer)"> (任意)</span></div>
-    <textarea class="text-area" id="good-things" rows="3"></textarea>
-    <div id="why-section">
-      <div class="why-label">なぜできたか</div>
-      <textarea class="text-area" id="why-text" placeholder="自分のどんな工夫・選択が効いた?" rows="2"></textarea>
-    </div>
-
-    <div class="memories" id="memories"></div>
-  </div>
-
-  <!-- Calendar Page -->
-  <div id="page-calendar" class="page">
-    <div class="header">
-      <h1>カレンダー</h1>
-    </div>
-    <div class="cal-mode-toggle">
-      <button data-mode="month" class="active">月</button>
-      <button data-mode="year">年</button>
-    </div>
-
-    <div id="month-view">
-      <div class="month-nav">
-        <button id="prev-month">&lt;</button>
-        <span class="month-label" id="month-label"></span>
-        <button id="next-month">&gt;</button>
-      </div>
-      <div class="calendar-grid" id="calendar-grid"></div>
-    </div>
-
-    <div id="year-view" style="display:none">
-      <div class="year-nav">
-        <button id="prev-year">&lt;</button>
-        <span class="year-label" id="year-label"></span>
-        <button id="next-year">&gt;</button>
-      </div>
-      <div class="year-grid" id="year-grid"></div>
-      <div class="year-legend" id="year-legend"></div>
-    </div>
-  </div>
-
-  <!-- Stats Page -->
-  <div id="page-graph" class="page">
-    <div class="header">
-      <h1>統計</h1>
-    </div>
-    <div class="graph-container">
-      <canvas class="graph-canvas" id="graph-canvas"></canvas>
-    </div>
-    <div class="graph-range">
-      <button class="active" data-range="7">1週間</button>
-      <button data-range="14">2週間</button>
-      <button data-range="30">1ヶ月</button>
-    </div>
-
-    <div class="stats-grid" id="stats-grid"></div>
-
-    <div class="stat-block">
-      <div class="stat-block-title">気分の分布</div>
-      <div id="mood-dist"></div>
-    </div>
-
-    <div class="stat-block">
-      <div class="stat-block-title">よく使うタグ</div>
-      <div id="top-tags"></div>
-    </div>
-
-    <div class="stat-block">
-      <div class="stat-block-title">今週の目標</div>
-      <div id="goals-list"></div>
-      <div class="goal-add-form" id="goal-add-form"></div>
-    </div>
-  </div>
-
-  <!-- Export Page -->
-  <div id="page-export" class="page">
-    <div class="header">
-      <h1>エクスポート</h1>
-    </div>
-    <div class="export-section">
-      <button class="export-btn" id="export-md">
-        Markdown でエクスポート
-        <div class="export-desc">読書記録と地続きの形式</div>
-      </button>
-      <button class="export-btn" id="export-csv">
-        CSV でエクスポート
-        <div class="export-desc">スプレッドシートで分析用</div>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Detail Modal -->
-<div class="modal-overlay" id="detail-modal">
-  <div class="modal" id="modal-content"></div>
-</div>
-
-<!-- Tag Settings Modal -->
-<div class="settings-modal" id="tag-settings">
-  <div class="settings-panel" id="tag-settings-panel"></div>
-</div>
-
-<!-- Save Toast -->
-<div class="save-toast" id="save-toast">保存しました</div>
-
-<!-- Nav -->
-<nav class="nav">
-  <button data-page="record" class="active">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>
-    <span>きろく</span>
-  </button>
-  <button data-page="calendar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-    <span>カレンダー</span>
-  </button>
-  <button data-page="graph">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    <span>統計</span>
-  </button>
-  <button data-page="export">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-    <span>出力</span>
-  </button>
-</nav>
-
-<script>
-const MOOD_LABELS = ['', 'しんどい', 'いまいち', 'ふつう', '良い', 'すごく良い'];
-const MOOD_COLORS = ['', '#5c6b8a', '#7a8ba8', '#a0a0a0', '#a8c4a0', '#7db87d'];
-// [Daylio] タグに絵文字アイコンを付与
-const DEFAULT_TAGS = [
-  { name: '仕事', icon: '💼' },
-  { name: '家族', icon: '👨‍👩‍👧' },
-  { name: '子ども', icon: '🧒' },
-  { name: '読書', icon: '📚' },
-  { name: '睡眠', icon: '😴' },
-  { name: '運動', icon: '🏃' },
-  { name: '休息', icon: '☕' },
-  { name: '通院・体調', icon: '🏥' },
-  { name: '人間関係', icon: '🤝' },
-  { name: 'お金', icon: '💰' },
-];
-
-const PLACEHOLDERS = [
-  'ちゃんと寝た、でもOK',
-  '小さいことでOK。書けなければ空欄でも',
-  '断れた、それも立派なこと',
-  '散歩した、とか',
-  'ご飯をちゃんと食べた、とか',
-  '期限を守れた、とか',
-  '誰かに優しくできた、とか',
-  '自分のために時間を使えた、とか',
-];
-
-function getDateKey(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function todayKey() { return getDateKey(new Date()); }
-
-function loadRecords() {
-  return JSON.parse(localStorage.getItem('emlog_records') || '{}');
-}
-function saveRecords(r) {
-  localStorage.setItem('emlog_records', JSON.stringify(r));
-}
-// [Daylio] タグは {name, icon} 形式。旧来の文字列配列からも移行
-function loadTags() {
-  const raw = JSON.parse(localStorage.getItem('emlog_tags') || 'null');
-  if (!raw) return DEFAULT_TAGS.map(t => ({ ...t }));
-  return raw.map(t => typeof t === 'string' ? { name: t, icon: '' } : { name: t.name, icon: t.icon || '' });
-}
-function saveTags(t) {
-  localStorage.setItem('emlog_tags', JSON.stringify(t));
-}
-function tagIcon(name) {
-  const t = loadTags().find(x => x.name === name);
-  return t && t.icon ? t.icon : '';
-}
-// [Daylio] 目標データ
-function loadGoals() {
-  return JSON.parse(localStorage.getItem('emlog_goals') || '[]');
-}
-function saveGoals(g) {
-  localStorage.setItem('emlog_goals', JSON.stringify(g));
-}
-
-// --- State ---
-let currentMood = null;
-let selectedTags = new Set();
-let calendarDate = new Date();
-let calendarMode = 'month';
-let calendarYear = new Date().getFullYear();
-let graphRange = 7;
-
-// --- Init ---
-function init() {
-  renderDate();
-  renderTags();
-  setRandomPlaceholder();
-  loadTodayRecord();
-  renderMemories();
-  renderCalendar();
-  renderGraph();
-  setupNav();
-  setupMood();
-  setupInputListeners();
-  setupCalendarMode();
-  setupExport();
-}
-
-function renderDate() {
-  const d = new Date();
-  const days = ['日','月','火','水','木','金','土'];
-  document.getElementById('today-date').textContent =
-    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日(${days[d.getDay()]})`;
-}
-
-function setRandomPlaceholder() {
-  const ph = PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)];
-  document.getElementById('good-things').placeholder = ph;
-}
-
-// [Daylio] 「○ヶ月前/○年前の今日」メモリー
-function renderMemories() {
-  const records = loadRecords();
-  const now = new Date();
-  const container = document.getElementById('memories');
-  const cards = [];
-  const seen = new Set();
-
-  const addMemory = (date, label) => {
-    const key = getDateKey(date);
-    if (key === todayKey() || seen.has(key)) return;
-    const r = records[key];
-    if (!r) return;
-    seen.add(key);
-    cards.push({ key, label, record: r });
-  };
-
-  // 1ヶ月前・3ヶ月前・半年前・1年前
-  const mAgo = (n) => { const d = new Date(now); d.setMonth(d.getMonth() - n); return d; };
-  const yAgo = (n) => { const d = new Date(now); d.setFullYear(d.getFullYear() - n); return d; };
-  addMemory(mAgo(1), '1ヶ月前の今日');
-  addMemory(yAgo(1), '1年前の今日');
-  addMemory(mAgo(3), '3ヶ月前の今日');
-  addMemory(mAgo(6), '半年前の今日');
-
-  // フォールバック: 直近の記述ありの過去記録
-  if (cards.length === 0) {
-    const keys = Object.keys(records).sort().reverse();
-    for (const key of keys) {
-      if (key === todayKey()) continue;
-      if (records[key].goodThings) {
-        const p = key.split('-');
-        cards.push({ key, label: `${parseInt(p[1])}/${parseInt(p[2])}のあなた`, record: records[key] });
-        break;
-      }
-    }
-  }
-
-  if (cards.length === 0) { container.innerHTML = ''; return; }
-
-  let html = '<div class="section-label" style="margin-bottom:4px">振り返り</div>';
-  cards.slice(0, 3).forEach(c => {
-    const text = c.record.goodThings || (c.record.tags && c.record.tags.length ? c.record.tags.join('・') : MOOD_LABELS[c.record.mood]);
-    html += `
-      <div class="memory-card" data-key="${c.key}">
-        <div class="memory-dot" style="background:${MOOD_COLORS[c.record.mood]}"></div>
-        <div class="memory-body">
-          <div class="memory-when">${c.label}</div>
-          <div class="memory-text">${escapeHtml(text)}</div>
-        </div>
-      </div>`;
-  });
-  container.innerHTML = html;
-  container.querySelectorAll('.memory-card').forEach(el => {
-    el.addEventListener('click', () => showDetail(el.dataset.key));
-  });
-}
-
-// --- Mood ---
-function setupMood() {
-  document.querySelectorAll('#mood-selector .mood-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mood = parseInt(btn.dataset.mood);
-      currentMood = mood;
-      document.querySelectorAll('#mood-selector .mood-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      document.getElementById('mood-selector').classList.add('has-selection');
-      if (navigator.vibrate) navigator.vibrate(30);
-      autoSave();
-    });
-  });
-}
-
-// --- Tags ---
-function renderTags() {
-  const tags = loadTags();
-  const container = document.getElementById('tags-container');
-  container.innerHTML = '';
-  tags.forEach(tag => {
-    const btn = document.createElement('button');
-    btn.className = 'tag-btn' + (selectedTags.has(tag.name) ? ' selected' : '');
-    btn.innerHTML = (tag.icon ? `<span class="tag-icon">${tag.icon}</span>` : '') + escapeHtml(tag.name);
-    btn.addEventListener('click', () => {
-      if (selectedTags.has(tag.name)) selectedTags.delete(tag.name);
-      else selectedTags.add(tag.name);
-      btn.classList.toggle('selected');
-      autoSave();
-    });
-    container.appendChild(btn);
-  });
-  const manageBtn = document.createElement('button');
-  manageBtn.className = 'tag-manage-btn';
-  manageBtn.textContent = '編集';
-  manageBtn.addEventListener('click', openTagSettings);
-  container.appendChild(manageBtn);
-}
-
-// --- Auto-save ---
-let saveTimeout;
-function autoSave() {
-  if (!currentMood) return;
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    const records = loadRecords();
-    const key = todayKey();
-    records[key] = {
-      mood: currentMood,
-      tags: [...selectedTags],
-      goodThings: document.getElementById('good-things').value.trim(),
-      why: document.getElementById('why-text').value.trim(),
-      updatedAt: new Date().toISOString()
-    };
-    saveRecords(records);
-    showToast();
-    renderCalendar();
-    renderGraph();
-  }, 400);
-}
-
-function showToast() {
-  const t = document.getElementById('save-toast');
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 1200);
-}
-
-function setupInputListeners() {
-  const goodThings = document.getElementById('good-things');
-  const whySection = document.getElementById('why-section');
-  goodThings.addEventListener('input', () => {
-    autoSave();
-    if (goodThings.value.trim().length > 0) {
-      whySection.classList.add('visible');
-    } else if (!document.getElementById('why-text').value.trim()) {
-      whySection.classList.remove('visible');
-    }
-  });
-  document.getElementById('why-text').addEventListener('input', autoSave);
-}
-
-function loadTodayRecord() {
-  const records = loadRecords();
-  const rec = records[todayKey()];
-  if (!rec) return;
-  currentMood = rec.mood;
-  document.querySelectorAll('#mood-selector .mood-btn').forEach(b => {
-    if (parseInt(b.dataset.mood) === rec.mood) b.classList.add('selected');
-  });
-  document.getElementById('mood-selector').classList.add('has-selection');
-  selectedTags = new Set(rec.tags || []);
-  renderTags();
-  document.getElementById('good-things').value = rec.goodThings || '';
-  if (rec.why) document.getElementById('why-text').value = rec.why;
-  if (rec.goodThings || rec.why) {
-    document.getElementById('why-section').classList.add('visible');
-  }
-}
-
-// --- Nav ---
-function setupNav() {
-  document.querySelectorAll('.nav button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const page = btn.dataset.page;
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById('page-' + page).classList.add('active');
-      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (page === 'calendar') renderCalendar();
-      if (page === 'graph') renderGraph();
-      if (page === 'record') renderMemories();
-    });
-  });
-}
-
-// [Daylio] カレンダー 月/年 切替
-function setupCalendarMode() {
-  document.querySelectorAll('.cal-mode-toggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      calendarMode = btn.dataset.mode;
-      document.querySelectorAll('.cal-mode-toggle button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('month-view').style.display = calendarMode === 'month' ? 'block' : 'none';
-      document.getElementById('year-view').style.display = calendarMode === 'year' ? 'block' : 'none';
-      renderCalendar();
-    });
-  });
-  document.getElementById('prev-year').onclick = () => { calendarYear--; renderYearPixels(); };
-  document.getElementById('next-year').onclick = () => { calendarYear++; renderYearPixels(); };
-}
-
-function renderCalendar() {
-  if (calendarMode === 'year') { renderYearPixels(); return; }
-  const y = calendarDate.getFullYear();
-  const m = calendarDate.getMonth();
-  document.getElementById('month-label').textContent = `${y}年${m+1}月`;
-  const grid = document.getElementById('calendar-grid');
-  grid.innerHTML = '';
-  const dayNames = ['月','火','水','木','金','土','日'];
-  dayNames.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'cal-header';
-    el.textContent = d;
-    grid.appendChild(el);
-  });
-  const first = new Date(y, m, 1);
-  let startDay = first.getDay() - 1;
-  if (startDay < 0) startDay = 6;
-  const daysInMonth = new Date(y, m+1, 0).getDate();
-  const records = loadRecords();
-  const today = new Date();
-  const todayStr = todayKey();
-  for (let i = 0; i < startDay; i++) {
-    const el = document.createElement('div');
-    el.className = 'cal-day empty';
-    grid.appendChild(el);
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    const el = document.createElement('div');
-    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const cellDate = new Date(y, m, d);
-    const isFuture = cellDate > today && key !== todayStr;
-    el.className = 'cal-day';
-    if (key === todayStr) el.classList.add('today');
-    if (isFuture) {
-      el.classList.add('future');
-      el.innerHTML = `<span>${d}</span>`;
-    } else if (records[key]) {
-      el.classList.add('has-record');
-      el.style.background = MOOD_COLORS[records[key].mood];
-      const hasText = records[key].goodThings || records[key].why;
-      el.innerHTML = `<span>${d}</span>${hasText ? '<span class="cal-dot"></span>' : ''}`;
-      el.addEventListener('click', () => showDetail(key));
-    } else {
-      el.classList.add('no-record');
-      el.innerHTML = `<span>${d}</span>`;
-      el.addEventListener('click', () => showNewRecordModal(key));
-    }
-    grid.appendChild(el);
-  }
-  document.getElementById('prev-month').onclick = () => {
-    calendarDate.setMonth(calendarDate.getMonth() - 1);
-    renderCalendar();
-  };
-  document.getElementById('next-month').onclick = () => {
-    calendarDate.setMonth(calendarDate.getMonth() + 1);
-    renderCalendar();
-  };
-}
-
-// [Daylio] 年間ピクセル表示
-function renderYearPixels() {
-  document.getElementById('year-label').textContent = `${calendarYear}年`;
-  const grid = document.getElementById('year-grid');
-  grid.innerHTML = '';
-  const records = loadRecords();
-  const today = new Date();
-  const monthNames = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-  for (let m = 0; m < 12; m++) {
-    const row = document.createElement('div');
-    row.className = 'year-row';
-    const label = document.createElement('div');
-    label.className = 'year-month-label';
-    label.textContent = monthNames[m];
-    row.appendChild(label);
-    const daysInMonth = new Date(calendarYear, m+1, 0).getDate();
-    for (let d = 1; d <= 31; d++) {
-      const cell = document.createElement('div');
-      if (d > daysInMonth) {
-        cell.className = 'year-cell blank';
-        row.appendChild(cell);
-        continue;
-      }
-      const key = `${calendarYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const cellDate = new Date(calendarYear, m, d);
-      const isFuture = cellDate > today && key !== todayKey();
-      if (records[key]) {
-        cell.className = 'year-cell has-record';
-        cell.style.background = MOOD_COLORS[records[key].mood];
-        cell.title = `${m+1}/${d} ${MOOD_LABELS[records[key].mood]}`;
-        cell.addEventListener('click', () => showDetail(key));
-      } else if (isFuture) {
-        cell.className = 'year-cell future';
-      } else {
-        cell.className = 'year-cell';
-        cell.title = `${m+1}/${d}`;
-        cell.addEventListener('click', () => showNewRecordModal(key));
-      }
-      row.appendChild(cell);
-    }
-    grid.appendChild(row);
-  }
-  // 凡例
-  const legend = document.getElementById('year-legend');
-  legend.innerHTML = `<span>しんどい</span><div class="legend-cells">` +
-    [1,2,3,4,5].map(i => `<div class="legend-cell" style="background:${MOOD_COLORS[i]}"></div>`).join('') +
-    `</div><span>すごく良い</span>`;
-}
-
-function showNewRecordModal(key) {
-  const parts = key.split('-');
-  const dateStr = `${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
-  const modal = document.getElementById('modal-content');
-  modal.innerHTML = `
-    <div style="position:relative">
-      <button class="modal-close" onclick="closeDetail()">&times;</button>
-      <div class="modal-date">${dateStr}</div>
-      <div class="new-record-section">
-        <div class="section-label" style="margin-top:0">気分を選ぶ</div>
-        <div class="new-record-mood">
-          ${[1,2,3,4,5].map(i => `<button class="new-mood-btn" data-mood="${i}" style="background:${MOOD_COLORS[i]}">${MOOD_LABELS[i].charAt(0)}</button>`).join('')}
-        </div>
-        <div class="section-label">良かったこと <span style="font-size:11px;color:var(--text-dimmer)">(任意)</span></div>
-        <textarea class="text-area" id="new-good-things" placeholder="小さいことでOK" rows="2"></textarea>
-        <button class="save-new-btn" id="save-new-btn" disabled>保存する</button>
-      </div>
-    </div>`;
-  document.getElementById('detail-modal').classList.add('show');
-
-  let newMood = null;
-  modal.querySelectorAll('.new-mood-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      newMood = parseInt(btn.dataset.mood);
-      modal.querySelectorAll('.new-mood-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      document.getElementById('save-new-btn').disabled = false;
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
-  });
-  document.getElementById('save-new-btn').addEventListener('click', () => {
-    if (!newMood) return;
-    const records = loadRecords();
-    records[key] = {
-      mood: newMood,
-      tags: [],
-      goodThings: document.getElementById('new-good-things').value.trim(),
-      why: '',
-      updatedAt: new Date().toISOString()
-    };
-    saveRecords(records);
-    closeDetail();
-    renderCalendar();
-    renderGraph();
-    showToast();
-  });
-}
-
-function showDetail(key) {
-  const records = loadRecords();
-  const rec = records[key];
-  if (!rec) return;
-  const parts = key.split('-');
-  const dateStr = `${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
-  const modal = document.getElementById('modal-content');
-  let html = `
-    <div style="position:relative">
-      <button class="modal-close" onclick="closeDetail()">&times;</button>
-      <div class="modal-date">${dateStr}</div>
-      <div class="mood-display" style="background:${MOOD_COLORS[rec.mood]}">${MOOD_LABELS[rec.mood]}</div>`;
-  if (rec.tags && rec.tags.length) {
-    html += `<div class="detail-section"><div class="detail-label">できごと</div><div class="detail-tags">`;
-    rec.tags.forEach(t => {
-      const ic = tagIcon(t);
-      html += `<span class="detail-tag">${ic ? ic + ' ' : ''}${escapeHtml(t)}</span>`;
-    });
-    html += `</div></div>`;
-  }
-  if (rec.goodThings) {
-    html += `<div class="detail-section"><div class="detail-label">良かったこと・できたこと</div><div class="detail-text">${escapeHtml(rec.goodThings)}</div></div>`;
-  }
-  if (rec.why) {
-    html += `<div class="detail-section"><div class="detail-label">なぜできたか</div><div class="detail-text">${escapeHtml(rec.why)}</div></div>`;
-  }
-  html += `<button class="delete-btn" onclick="deleteRecord('${key}')">この記録を削除</button></div>`;
-  modal.innerHTML = html;
-  document.getElementById('detail-modal').classList.add('show');
-}
-
-function closeDetail() {
-  document.getElementById('detail-modal').classList.remove('show');
-}
-
-function deleteRecord(key) {
-  if (!confirm('この記録を削除しますか？')) return;
-  const records = loadRecords();
-  delete records[key];
-  saveRecords(records);
-  closeDetail();
-  renderCalendar();
-  renderGraph();
-  renderMemories();
-  if (key === todayKey()) {
-    currentMood = null;
-    selectedTags.clear();
-    document.querySelectorAll('#mood-selector .mood-btn').forEach(b => b.classList.remove('selected'));
-    document.getElementById('mood-selector').classList.remove('has-selection');
-    document.getElementById('good-things').value = '';
-    document.getElementById('why-text').value = '';
-    document.getElementById('why-section').classList.remove('visible');
-    renderTags();
-  }
-}
-
-document.getElementById('detail-modal').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('detail-modal')) closeDetail();
-});
-
-// --- Graph + Stats ---
-function renderGraph() {
-  const canvas = document.getElementById('graph-canvas');
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  const w = rect.width;
-  const h = rect.height;
-  ctx.clearRect(0, 0, w, h);
-
-  const records = loadRecords();
-  const days = [];
-  const today = new Date();
-  for (let i = graphRange - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = getDateKey(d);
-    days.push({ date: d, key, record: records[key] || null });
-  }
-  const padL = 30, padR = 16, padT = 20, padB = 30;
-  const plotW = w - padL - padR;
-  const plotH = h - padT - padB;
-  ctx.fillStyle = '#555';
-  ctx.font = '11px sans-serif';
-  ctx.textAlign = 'right';
-  for (let i = 1; i <= 5; i++) {
-    const y = padT + plotH - ((i - 1) / 4) * plotH;
-    ctx.fillText(i, padL - 6, y + 4);
-    ctx.strokeStyle = '#2a2a4a';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(padL, y);
-    ctx.lineTo(w - padR, y);
-    ctx.stroke();
-  }
-  const points = [];
-  days.forEach((day, i) => {
-    const x = padL + (i / (graphRange - 1)) * plotW;
-    if (day.record) {
-      const y = padT + plotH - ((day.record.mood - 1) / 4) * plotH;
-      points.push({ x, y, mood: day.record.mood });
-    } else points.push(null);
-  });
-  ctx.strokeStyle = 'rgba(168,196,160,0.5)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  let started = false;
-  points.forEach(p => {
-    if (!p) { started = false; return; }
-    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
-    else ctx.lineTo(p.x, p.y);
-  });
-  ctx.stroke();
-  points.forEach(p => {
-    if (!p) return;
-    ctx.fillStyle = MOOD_COLORS[p.mood];
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  ctx.fillStyle = '#555';
-  ctx.font = '10px sans-serif';
-  ctx.textAlign = 'center';
-  const step = graphRange <= 14 ? 1 : 3;
-  days.forEach((day, i) => {
-    if (i % step !== 0 && i !== days.length - 1) return;
-    const x = padL + (i / (graphRange - 1)) * plotW;
-    ctx.fillText(`${day.date.getMonth()+1}/${day.date.getDate()}`, x, h - 6);
-  });
-  document.querySelectorAll('.graph-range button').forEach(btn => {
-    btn.classList.toggle('active', parseInt(btn.dataset.range) === graphRange);
-    btn.onclick = () => { graphRange = parseInt(btn.dataset.range); renderGraph(); };
-  });
-
-  renderStats();
-}
-
-// [Daylio] 統計（連続記録・合計・平均・分布・よく使うタグ）
-function renderStats() {
-  const records = loadRecords();
-  const keys = Object.keys(records);
-  const total = keys.length;
-
-  // 連続記録（今日 or 昨日を起点に遡る）
-  let streak = 0;
-  const cur = new Date();
-  if (!records[getDateKey(cur)]) cur.setDate(cur.getDate() - 1);
-  while (records[getDateKey(cur)]) {
-    streak++;
-    cur.setDate(cur.getDate() - 1);
-  }
-
-  // 平均
-  let sum = 0;
-  keys.forEach(k => sum += records[k].mood);
-  const avg = total ? (sum / total).toFixed(1) : '—';
-
-  document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card"><div class="stat-value">${streak}<span class="stat-unit"> 日</span></div><div class="stat-label">連続記録</div></div>
-    <div class="stat-card"><div class="stat-value">${total}<span class="stat-unit"> 日</span></div><div class="stat-label">合計記録</div></div>
-    <div class="stat-card"><div class="stat-value">${avg}</div><div class="stat-label">平均気分</div></div>`;
-
-  // 気分の分布
-  const dist = [0,0,0,0,0,0];
-  keys.forEach(k => dist[records[k].mood]++);
-  const maxDist = Math.max(1, ...dist.slice(1));
-  let distHtml = '';
-  for (let i = 5; i >= 1; i--) {
-    const pct = (dist[i] / maxDist) * 100;
-    distHtml += `
-      <div class="mood-dist-row">
-        <div class="mood-dist-dot" style="background:${MOOD_COLORS[i]}"></div>
-        <div class="mood-dist-name">${MOOD_LABELS[i]}</div>
-        <div class="mood-dist-bar-wrap"><div class="mood-dist-bar" style="width:${pct}%;background:${MOOD_COLORS[i]}"></div></div>
-        <div class="mood-dist-count">${dist[i]}</div>
-      </div>`;
-  }
-  document.getElementById('mood-dist').innerHTML = distHtml;
-
-  // よく使うタグ
-  const tagCount = {};
-  keys.forEach(k => (records[k].tags || []).forEach(t => tagCount[t] = (tagCount[t] || 0) + 1));
-  const sorted = Object.entries(tagCount).sort((a,b) => b[1]-a[1]).slice(0, 5);
-  if (sorted.length === 0) {
-    document.getElementById('top-tags').innerHTML = '<div class="goal-empty">まだタグの記録がありません</div>';
-  } else {
-    document.getElementById('top-tags').innerHTML = sorted.map(([name, cnt]) => {
-      const ic = tagIcon(name);
-      return `<div class="top-tag-row"><span class="top-tag-name">${ic ? ic + ' ' : ''}${escapeHtml(name)}</span><span class="top-tag-count">${cnt}日</span></div>`;
-    }).join('');
-  }
-
-  renderGoals();
-}
-
-// [Daylio] 目標（週ごとのタグ目標と進捗）
-function weekStart() {
-  const d = new Date();
-  let day = d.getDay() - 1;
-  if (day < 0) day = 6;
-  d.setDate(d.getDate() - day);
-  d.setHours(0,0,0,0);
-  return d;
-}
-function renderGoals() {
-  const goals = loadGoals();
-  const records = loadRecords();
-  const ws = weekStart();
-  const list = document.getElementById('goals-list');
-
-  const countThisWeek = (tagName) => {
-    let c = 0;
-    Object.keys(records).forEach(k => {
-      const d = new Date(k + 'T00:00:00');
-      if (d >= ws && (records[k].tags || []).includes(tagName)) c++;
-    });
-    return c;
-  };
-
-  if (goals.length === 0) {
-    list.innerHTML = '<div class="goal-empty">目標はまだありません。下から追加できます。</div>';
-  } else {
-    list.innerHTML = goals.map(g => {
-      const done = countThisWeek(g.tag);
-      const pct = Math.min(100, (done / g.perWeek) * 100);
-      const ic = tagIcon(g.tag);
-      return `
-        <div class="goal-row">
-          <div class="goal-info">
-            <div class="goal-title">${ic ? ic + ' ' : ''}${escapeHtml(g.tag)} — 週${g.perWeek}回</div>
-            <div class="goal-bar-wrap"><div class="goal-bar" style="width:${pct}%"></div></div>
-          </div>
-          <div class="goal-count">${done}/${g.perWeek}</div>
-          <button class="goal-del" data-id="${g.id}">&times;</button>
-        </div>`;
-    }).join('');
-    list.querySelectorAll('.goal-del').forEach(btn => {
-      btn.addEventListener('click', () => {
-        saveGoals(loadGoals().filter(x => x.id !== btn.dataset.id));
-        renderGoals();
-      });
-    });
-  }
-
-  // 追加フォーム
-  const tags = loadTags();
-  const form = document.getElementById('goal-add-form');
-  form.innerHTML = `
-    <select id="goal-tag-select">${tags.map(t => `<option value="${escapeHtml(t.name)}">${t.icon ? t.icon + ' ' : ''}${escapeHtml(t.name)}</option>`).join('')}</select>
-    <input type="number" id="goal-week-num" min="1" max="7" value="3">
-    <button class="goal-add-btn" id="goal-add-btn">追加</button>`;
-  document.getElementById('goal-add-btn').addEventListener('click', () => {
-    const tag = document.getElementById('goal-tag-select').value;
-    const perWeek = Math.max(1, Math.min(7, parseInt(document.getElementById('goal-week-num').value) || 1));
-    const goals2 = loadGoals();
-    goals2.push({ id: Date.now().toString(), tag, perWeek });
-    saveGoals(goals2);
-    renderGoals();
-  });
-}
-
-// --- Tag Settings ---
-function openTagSettings() {
-  const tags = loadTags();
-  const panel = document.getElementById('tag-settings-panel');
-  let html = '<h2>タグを編集</h2><ul class="tag-list-edit">';
-  tags.forEach((tag, i) => {
-    html += `<li>
-      <input class="icon-input" type="text" value="${escapeHtml(tag.icon)}" data-idx="${i}" data-field="icon" maxlength="2" placeholder="🙂">
-      <input class="name-input" type="text" value="${escapeHtml(tag.name)}" data-idx="${i}" data-field="name">
-      <button class="del-tag" data-idx="${i}">&times;</button>
-    </li>`;
-  });
-  html += `</ul>
-    <div class="add-tag-row">
-      <input class="icon-input" type="text" id="new-tag-icon" maxlength="2" placeholder="🙂">
-      <input class="name-input" type="text" id="new-tag-input" placeholder="新しいタグ">
-      <button id="add-tag-btn">追加</button>
-    </div>
-    <button class="settings-close" id="close-tag-settings">閉じる</button>`;
-  panel.innerHTML = html;
-  document.getElementById('tag-settings').classList.add('show');
-
-  panel.querySelectorAll('.del-tag').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.idx);
-      const t = loadTags();
-      const removed = t[idx].name;
-      t.splice(idx, 1);
-      saveTags(t);
-      selectedTags.delete(removed);
-      openTagSettings();
-      renderTags();
-    });
-  });
-  panel.querySelectorAll('.tag-list-edit input').forEach(inp => {
-    inp.addEventListener('change', () => {
-      const t = loadTags();
-      const idx = parseInt(inp.dataset.idx);
-      const field = inp.dataset.field;
-      if (field === 'name') {
-        const oldName = t[idx].name;
-        t[idx].name = inp.value.trim();
-        if (selectedTags.has(oldName)) {
-          selectedTags.delete(oldName);
-          selectedTags.add(t[idx].name);
-        }
-      } else {
-        t[idx].icon = inp.value.trim();
-      }
-      saveTags(t);
-      renderTags();
-    });
-  });
-  document.getElementById('add-tag-btn').addEventListener('click', () => {
-    const v = document.getElementById('new-tag-input').value.trim();
-    if (!v) return;
-    const ic = document.getElementById('new-tag-icon').value.trim();
-    const t = loadTags();
-    t.push({ name: v, icon: ic });
-    saveTags(t);
-    openTagSettings();
-    renderTags();
-  });
-  document.getElementById('close-tag-settings').addEventListener('click', () => {
-    document.getElementById('tag-settings').classList.remove('show');
-  });
-}
-
-document.getElementById('tag-settings').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('tag-settings')) {
-    document.getElementById('tag-settings').classList.remove('show');
-  }
-});
-
-// --- Export ---
-function setupExport() {
-  document.getElementById('export-md').addEventListener('click', exportMarkdown);
-  document.getElementById('export-csv').addEventListener('click', exportCSV);
-}
-function exportMarkdown() {
-  const records = loadRecords();
-  const keys = Object.keys(records).sort();
-  if (!keys.length) { alert('記録がありません'); return; }
-  let md = '# emlog 記録\n\n';
-  keys.forEach(key => {
-    const r = records[key];
-    md += `## ${key}\n`;
-    md += `- 気分: ${MOOD_LABELS[r.mood]} (${r.mood}/5)\n`;
-    if (r.tags && r.tags.length) md += `- できごと: ${r.tags.join(', ')}\n`;
-    if (r.goodThings) md += `- 良かったこと: ${r.goodThings}\n`;
-    if (r.why) md += `- なぜできたか: ${r.why}\n`;
-    md += '\n';
-  });
-  downloadFile('emlog.md', md, 'text/markdown');
-}
-function exportCSV() {
-  const records = loadRecords();
-  const keys = Object.keys(records).sort();
-  if (!keys.length) { alert('記録がありません'); return; }
-  let csv = '日付,気分,気分ラベル,タグ,良かったこと,なぜできたか\n';
-  keys.forEach(key => {
-    const r = records[key];
-    csv += `${key},${r.mood},${MOOD_LABELS[r.mood]},"${(r.tags||[]).join('; ')}","${(r.goodThings||'').replace(/"/g,'""')}","${(r.why||'').replace(/"/g,'""')}"\n`;
-  });
-  downloadFile('emlog.csv', csv, 'text/csv');
-}
-function downloadFile(name, content, type) {
-  const blob = new Blob([content], { type: type + ';charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s == null ? '' : s;
-  return d.innerHTML;
-}
-
-window.addEventListener('resize', () => renderGraph());
-init();
-</script>
+<script type="text/babel" src="prototype/bundle.jsx"></script>
 </body>
 </html>
