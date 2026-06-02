@@ -58,7 +58,7 @@ body {
 }
 .nav button {
   flex: 1;
-  max-width: 160px;
+  max-width: 120px;
   background: none;
   border: none;
   color: var(--text-dim);
@@ -120,7 +120,6 @@ body {
   position: relative;
 }
 .mood-btn:active { transform: scale(0.92); }
-/* [改善1] 未選択ボタンを暗くしてコントラストで伝える */
 .mood-selector.has-selection .mood-btn:not(.selected) {
   opacity: 0.35;
   transform: scale(0.9);
@@ -165,7 +164,11 @@ body {
   cursor: pointer;
   transition: all 0.15s;
   user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
+.tag-btn .tag-icon { font-size: 14px; line-height: 1; }
 .tag-btn:active { transform: scale(0.95); }
 .tag-btn.selected {
   border-color: var(--accent);
@@ -203,7 +206,6 @@ body {
 }
 .text-area::placeholder { color: var(--text-dimmer); }
 
-/* [改善3] なぜできたか欄のスライドアニメーション */
 #why-section {
   overflow: hidden;
   max-height: 0;
@@ -233,25 +235,49 @@ body {
   border-radius: 2px;
 }
 
-/* [改善3] 過去の記述を表示 */
-.past-hint {
-  font-size: 11px;
-  color: var(--text-dimmer);
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: rgba(168,196,160,0.05);
-  border-radius: 8px;
-  border-left: 2px solid rgba(168,196,160,0.2);
-  line-height: 1.5;
-  transition: opacity 0.3s;
+/* --- Memories --- */
+.memories {
+  margin-top: 28px;
 }
-.past-hint strong {
+.memory-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(168,196,160,0.05);
+  border-radius: 10px;
+  border-left: 2px solid rgba(168,196,160,0.25);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.memory-card:hover { background: rgba(168,196,160,0.1); }
+.memory-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.memory-body { flex: 1; min-width: 0; }
+.memory-when {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.memory-text {
+  font-size: 12px;
   color: var(--text-dim);
-  font-weight: 500;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* --- Save feedback --- */
-/* [改善1] トーストを上部に小さく表示 */
 .save-toast {
   position: fixed;
   top: 12px;
@@ -275,14 +301,40 @@ body {
 }
 
 /* --- Calendar Page --- */
-.month-nav {
+.cal-mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin: 4px auto 8px;
+  width: fit-content;
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 3px;
+}
+.cal-mode-toggle button {
+  padding: 6px 22px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cal-mode-toggle button.active {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.month-nav, .year-nav {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 20px;
   padding: 12px 0;
 }
-.month-nav button {
+.month-nav button, .year-nav button {
   background: none;
   border: none;
   color: var(--text-dim);
@@ -290,7 +342,7 @@ body {
   cursor: pointer;
   padding: 4px 12px;
 }
-.month-nav .month-label {
+.month-nav .month-label, .year-nav .year-label {
   font-size: 16px;
   font-weight: 600;
   min-width: 140px;
@@ -309,7 +361,6 @@ body {
   text-align: center;
   padding: 4px 0;
 }
-/* [改善2] セルを縦長にしてタップ領域を拡大 */
 .cal-day {
   aspect-ratio: 1 / 1.2;
   border-radius: 10px;
@@ -331,16 +382,9 @@ body {
 }
 .cal-day.has-record { color: #fff; font-weight: 600; }
 .cal-day.empty { cursor: default; }
-/* [改善2] 未来日はタップ不可に見せる */
 .cal-day.future { color: var(--text-dimmer); opacity: 0.4; cursor: default; }
-/* [改善2] 記録なし日のホバー状態 */
-.cal-day.no-record:not(.empty):not(.future) {
-  cursor: pointer;
-}
-.cal-day.no-record:not(.empty):not(.future):hover {
-  background: rgba(255,255,255,0.05);
-}
-/* [改善2] テキスト記述ありの日にドット表示 */
+.cal-day.no-record:not(.empty):not(.future) { cursor: pointer; }
+.cal-day.no-record:not(.empty):not(.future):hover { background: rgba(255,255,255,0.05); }
 .cal-day .cal-dot {
   width: 4px;
   height: 4px;
@@ -348,6 +392,44 @@ body {
   background: rgba(255,255,255,0.7);
 }
 .cal-day.no-record .cal-dot { display: none; }
+
+/* --- Year in Pixels --- */
+.year-grid { padding: 4px 0; }
+.year-row {
+  display: grid;
+  grid-template-columns: 24px repeat(31, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+  align-items: center;
+}
+.year-month-label {
+  font-size: 10px;
+  color: var(--text-dimmer);
+  text-align: right;
+  padding-right: 4px;
+}
+.year-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: #2a2a44;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.year-cell.has-record { cursor: pointer; }
+.year-cell.blank { background: none; cursor: default; }
+.year-cell.future { background: #20203a; cursor: default; }
+.year-cell:not(.blank):not(.future):active { transform: scale(1.4); }
+.year-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 10px;
+  color: var(--text-dimmer);
+}
+.year-legend .legend-cells { display: flex; gap: 3px; }
+.year-legend .legend-cell { width: 12px; height: 12px; border-radius: 3px; }
 
 /* --- Detail Modal --- */
 .modal-overlay {
@@ -388,9 +470,7 @@ body {
   font-weight: 600;
   margin-bottom: 12px;
 }
-.modal .detail-section {
-  margin-top: 16px;
-}
+.modal .detail-section { margin-top: 16px; }
 .modal .detail-label {
   font-size: 12px;
   color: var(--text-dim);
@@ -438,7 +518,6 @@ body {
 }
 .modal .delete-btn:hover { background: rgba(176,128,128,0.1); }
 
-/* [改善2] 新規記録モーダル */
 .modal .new-record-section { margin-top: 12px; }
 .modal .new-record-section .section-label { margin: 16px 0 8px; }
 .modal .new-record-mood {
@@ -482,19 +561,11 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
-.modal .save-new-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
+.modal .save-new-btn:disabled { opacity: 0.3; cursor: default; }
 
-/* --- Graph Page --- */
-.graph-container {
-  padding: 16px 0;
-}
-.graph-canvas {
-  width: 100%;
-  height: 200px;
-}
+/* --- Stats Page --- */
+.graph-container { padding: 16px 0; }
+.graph-canvas { width: 100%; height: 200px; }
 .graph-range {
   display: flex;
   justify-content: center;
@@ -514,6 +585,151 @@ body {
   border-color: var(--accent);
   color: var(--text);
 }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 24px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 14px 8px;
+  text-align: center;
+}
+.stat-card .stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stat-card .stat-unit {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.stat-card .stat-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.stat-block { margin-top: 24px; }
+.stat-block-title {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.mood-dist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.mood-dist-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mood-dist-name {
+  font-size: 12px;
+  color: var(--text-dim);
+  width: 64px;
+  flex-shrink: 0;
+}
+.mood-dist-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: #2a2a44;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mood-dist-bar { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.mood-dist-count {
+  font-size: 11px;
+  color: var(--text-dimmer);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.top-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+.top-tag-name { flex: 1; }
+.top-tag-count { color: var(--text-dim); font-size: 12px; }
+
+/* --- Goals --- */
+.goal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.goal-info { flex: 1; min-width: 0; }
+.goal-title { font-size: 13px; color: var(--text); margin-bottom: 6px; }
+.goal-bar-wrap {
+  height: 8px;
+  background: #2a2a44;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.goal-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.4s;
+}
+.goal-count {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.goal-del {
+  background: none;
+  border: none;
+  color: #b08080;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.goal-add-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.goal-add-form select, .goal-add-form input {
+  background: var(--bg-input);
+  border: 1px solid #3a3a5a;
+  border-radius: 8px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.goal-add-form select { flex: 1; min-width: 100px; }
+.goal-add-form input { width: 56px; text-align: center; }
+.goal-add-form .goal-add-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.goal-empty { font-size: 12px; color: var(--text-dimmer); padding: 8px 0; }
 
 /* --- Settings (Tag Edit) Modal --- */
 .settings-modal {
@@ -535,13 +751,8 @@ body {
   overflow-y: auto;
   padding: 24px 20px;
 }
-.settings-panel h2 {
-  font-size: 16px;
-  margin-bottom: 16px;
-}
-.tag-list-edit {
-  list-style: none;
-}
+.settings-panel h2 { font-size: 16px; margin-bottom: 16px; }
+.tag-list-edit { list-style: none; }
 .tag-list-edit li {
   display: flex;
   align-items: center;
@@ -549,7 +760,18 @@ body {
   padding: 8px 0;
   border-bottom: 1px solid #2a2a4a;
 }
-.tag-list-edit input {
+.tag-list-edit .icon-input {
+  width: 42px;
+  text-align: center;
+  background: var(--bg-input);
+  border: 1px solid #3a3a5a;
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 4px;
+  font-size: 16px;
+  font-family: inherit;
+}
+.tag-list-edit .name-input {
   flex: 1;
   background: var(--bg-input);
   border: 1px solid #3a3a5a;
@@ -573,7 +795,18 @@ body {
   gap: 8px;
   margin-top: 12px;
 }
-.add-tag-row input {
+.add-tag-row .icon-input {
+  width: 42px;
+  text-align: center;
+  background: var(--bg-input);
+  border: 1px solid #3a3a5a;
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 4px;
+  font-size: 16px;
+  font-family: inherit;
+}
+.add-tag-row .name-input {
   flex: 1;
   background: var(--bg-input);
   border: 1px solid #3a3a5a;
@@ -656,11 +889,12 @@ body {
 
     <div class="section-label">今日良かったこと・できたこと<span style="font-size:11px;color:var(--text-dimmer)"> (任意)</span></div>
     <textarea class="text-area" id="good-things" rows="3"></textarea>
-    <div id="past-hint"></div>
     <div id="why-section">
       <div class="why-label">なぜできたか</div>
       <textarea class="text-area" id="why-text" placeholder="自分のどんな工夫・選択が効いた?" rows="2"></textarea>
     </div>
+
+    <div class="memories" id="memories"></div>
   </div>
 
   <!-- Calendar Page -->
@@ -668,18 +902,35 @@ body {
     <div class="header">
       <h1>カレンダー</h1>
     </div>
-    <div class="month-nav">
-      <button id="prev-month">&lt;</button>
-      <span class="month-label" id="month-label"></span>
-      <button id="next-month">&gt;</button>
+    <div class="cal-mode-toggle">
+      <button data-mode="month" class="active">月</button>
+      <button data-mode="year">年</button>
     </div>
-    <div class="calendar-grid" id="calendar-grid"></div>
+
+    <div id="month-view">
+      <div class="month-nav">
+        <button id="prev-month">&lt;</button>
+        <span class="month-label" id="month-label"></span>
+        <button id="next-month">&gt;</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+
+    <div id="year-view" style="display:none">
+      <div class="year-nav">
+        <button id="prev-year">&lt;</button>
+        <span class="year-label" id="year-label"></span>
+        <button id="next-year">&gt;</button>
+      </div>
+      <div class="year-grid" id="year-grid"></div>
+      <div class="year-legend" id="year-legend"></div>
+    </div>
   </div>
 
-  <!-- Graph Page -->
+  <!-- Stats Page -->
   <div id="page-graph" class="page">
     <div class="header">
-      <h1>推移</h1>
+      <h1>統計</h1>
     </div>
     <div class="graph-container">
       <canvas class="graph-canvas" id="graph-canvas"></canvas>
@@ -688,6 +939,24 @@ body {
       <button class="active" data-range="7">1週間</button>
       <button data-range="14">2週間</button>
       <button data-range="30">1ヶ月</button>
+    </div>
+
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <div class="stat-block">
+      <div class="stat-block-title">気分の分布</div>
+      <div id="mood-dist"></div>
+    </div>
+
+    <div class="stat-block">
+      <div class="stat-block-title">よく使うタグ</div>
+      <div id="top-tags"></div>
+    </div>
+
+    <div class="stat-block">
+      <div class="stat-block-title">今週の目標</div>
+      <div id="goals-list"></div>
+      <div class="goal-add-form" id="goal-add-form"></div>
     </div>
   </div>
 
@@ -734,7 +1003,7 @@ body {
   </button>
   <button data-page="graph">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    <span>推移</span>
+    <span>統計</span>
   </button>
   <button data-page="export">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -745,9 +1014,20 @@ body {
 <script>
 const MOOD_LABELS = ['', 'しんどい', 'いまいち', 'ふつう', '良い', 'すごく良い'];
 const MOOD_COLORS = ['', '#5c6b8a', '#7a8ba8', '#a0a0a0', '#a8c4a0', '#7db87d'];
-const DEFAULT_TAGS = ['仕事', '家族', '子ども', '読書', '睡眠', '運動', '休息', '通院・体調', '人間関係', 'お金'];
+// [Daylio] タグに絵文字アイコンを付与
+const DEFAULT_TAGS = [
+  { name: '仕事', icon: '💼' },
+  { name: '家族', icon: '👨‍👩‍👧' },
+  { name: '子ども', icon: '🧒' },
+  { name: '読書', icon: '📚' },
+  { name: '睡眠', icon: '😴' },
+  { name: '運動', icon: '🏃' },
+  { name: '休息', icon: '☕' },
+  { name: '通院・体調', icon: '🏥' },
+  { name: '人間関係', icon: '🤝' },
+  { name: 'お金', icon: '💰' },
+];
 
-// [改善3] プレースホルダのローテーション
 const PLACEHOLDERS = [
   'ちゃんと寝た、でもOK',
   '小さいことでOK。書けなければ空欄でも',
@@ -762,7 +1042,6 @@ const PLACEHOLDERS = [
 function getDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-
 function todayKey() { return getDateKey(new Date()); }
 
 function loadRecords() {
@@ -771,17 +1050,33 @@ function loadRecords() {
 function saveRecords(r) {
   localStorage.setItem('emlog_records', JSON.stringify(r));
 }
+// [Daylio] タグは {name, icon} 形式。旧来の文字列配列からも移行
 function loadTags() {
-  return JSON.parse(localStorage.getItem('emlog_tags') || 'null') || [...DEFAULT_TAGS];
+  const raw = JSON.parse(localStorage.getItem('emlog_tags') || 'null');
+  if (!raw) return DEFAULT_TAGS.map(t => ({ ...t }));
+  return raw.map(t => typeof t === 'string' ? { name: t, icon: '' } : { name: t.name, icon: t.icon || '' });
 }
 function saveTags(t) {
   localStorage.setItem('emlog_tags', JSON.stringify(t));
+}
+function tagIcon(name) {
+  const t = loadTags().find(x => x.name === name);
+  return t && t.icon ? t.icon : '';
+}
+// [Daylio] 目標データ
+function loadGoals() {
+  return JSON.parse(localStorage.getItem('emlog_goals') || '[]');
+}
+function saveGoals(g) {
+  localStorage.setItem('emlog_goals', JSON.stringify(g));
 }
 
 // --- State ---
 let currentMood = null;
 let selectedTags = new Set();
 let calendarDate = new Date();
+let calendarMode = 'month';
+let calendarYear = new Date().getFullYear();
 let graphRange = 7;
 
 // --- Init ---
@@ -790,12 +1085,13 @@ function init() {
   renderTags();
   setRandomPlaceholder();
   loadTodayRecord();
-  showPastHint();
+  renderMemories();
   renderCalendar();
   renderGraph();
   setupNav();
   setupMood();
   setupInputListeners();
+  setupCalendarMode();
   setupExport();
 }
 
@@ -806,47 +1102,78 @@ function renderDate() {
     `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日(${days[d.getDay()]})`;
 }
 
-// [改善3] ランダムなプレースホルダ設定
 function setRandomPlaceholder() {
   const ph = PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)];
   document.getElementById('good-things').placeholder = ph;
 }
 
-// [改善3] 過去の記述をヒントとして表示
-function showPastHint() {
+// [Daylio] 「○ヶ月前/○年前の今日」メモリー
+function renderMemories() {
   const records = loadRecords();
-  const keys = Object.keys(records).sort().reverse();
-  const hints = [];
-  for (const key of keys) {
-    if (key === todayKey()) continue;
+  const now = new Date();
+  const container = document.getElementById('memories');
+  const cards = [];
+  const seen = new Set();
+
+  const addMemory = (date, label) => {
+    const key = getDateKey(date);
+    if (key === todayKey() || seen.has(key)) return;
     const r = records[key];
-    if (r.goodThings) {
-      hints.push({ date: key, text: r.goodThings });
+    if (!r) return;
+    seen.add(key);
+    cards.push({ key, label, record: r });
+  };
+
+  // 1ヶ月前・3ヶ月前・半年前・1年前
+  const mAgo = (n) => { const d = new Date(now); d.setMonth(d.getMonth() - n); return d; };
+  const yAgo = (n) => { const d = new Date(now); d.setFullYear(d.getFullYear() - n); return d; };
+  addMemory(mAgo(1), '1ヶ月前の今日');
+  addMemory(yAgo(1), '1年前の今日');
+  addMemory(mAgo(3), '3ヶ月前の今日');
+  addMemory(mAgo(6), '半年前の今日');
+
+  // フォールバック: 直近の記述ありの過去記録
+  if (cards.length === 0) {
+    const keys = Object.keys(records).sort().reverse();
+    for (const key of keys) {
+      if (key === todayKey()) continue;
+      if (records[key].goodThings) {
+        const p = key.split('-');
+        cards.push({ key, label: `${parseInt(p[1])}/${parseInt(p[2])}のあなた`, record: records[key] });
+        break;
+      }
     }
-    if (hints.length >= 1) break;
   }
-  const container = document.getElementById('past-hint');
-  if (hints.length > 0) {
-    const h = hints[0];
-    const parts = h.date.split('-');
-    const label = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
-    container.innerHTML = `<div class="past-hint"><strong>${label}のあなた:</strong> ${escapeHtml(h.text)}</div>`;
-  } else {
-    container.innerHTML = '';
-  }
+
+  if (cards.length === 0) { container.innerHTML = ''; return; }
+
+  let html = '<div class="section-label" style="margin-bottom:4px">振り返り</div>';
+  cards.slice(0, 3).forEach(c => {
+    const text = c.record.goodThings || (c.record.tags && c.record.tags.length ? c.record.tags.join('・') : MOOD_LABELS[c.record.mood]);
+    html += `
+      <div class="memory-card" data-key="${c.key}">
+        <div class="memory-dot" style="background:${MOOD_COLORS[c.record.mood]}"></div>
+        <div class="memory-body">
+          <div class="memory-when">${c.label}</div>
+          <div class="memory-text">${escapeHtml(text)}</div>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+  container.querySelectorAll('.memory-card').forEach(el => {
+    el.addEventListener('click', () => showDetail(el.dataset.key));
+  });
 }
 
 // --- Mood ---
 function setupMood() {
-  document.querySelectorAll('.mood-btn').forEach(btn => {
+  document.querySelectorAll('#mood-selector .mood-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const mood = parseInt(btn.dataset.mood);
       currentMood = mood;
-      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#mood-selector .mood-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
-      // [改善1] 選択状態クラスを親に付与
       document.getElementById('mood-selector').classList.add('has-selection');
-      // [改善1] 触覚フィードバック
       if (navigator.vibrate) navigator.vibrate(30);
       autoSave();
     });
@@ -860,11 +1187,11 @@ function renderTags() {
   container.innerHTML = '';
   tags.forEach(tag => {
     const btn = document.createElement('button');
-    btn.className = 'tag-btn' + (selectedTags.has(tag) ? ' selected' : '');
-    btn.textContent = tag;
+    btn.className = 'tag-btn' + (selectedTags.has(tag.name) ? ' selected' : '');
+    btn.innerHTML = (tag.icon ? `<span class="tag-icon">${tag.icon}</span>` : '') + escapeHtml(tag.name);
     btn.addEventListener('click', () => {
-      if (selectedTags.has(tag)) selectedTags.delete(tag);
-      else selectedTags.add(tag);
+      if (selectedTags.has(tag.name)) selectedTags.delete(tag.name);
+      else selectedTags.add(tag.name);
       btn.classList.toggle('selected');
       autoSave();
     });
@@ -908,38 +1235,30 @@ function showToast() {
 function setupInputListeners() {
   const goodThings = document.getElementById('good-things');
   const whySection = document.getElementById('why-section');
-
   goodThings.addEventListener('input', () => {
     autoSave();
-    // [改善3] テキストを書くと「なぜできたか」が自然に現れる
     if (goodThings.value.trim().length > 0) {
       whySection.classList.add('visible');
     } else if (!document.getElementById('why-text').value.trim()) {
       whySection.classList.remove('visible');
     }
   });
-
   document.getElementById('why-text').addEventListener('input', autoSave);
 }
 
-// --- Load today's record ---
 function loadTodayRecord() {
   const records = loadRecords();
   const rec = records[todayKey()];
   if (!rec) return;
   currentMood = rec.mood;
-  document.querySelectorAll('.mood-btn').forEach(b => {
+  document.querySelectorAll('#mood-selector .mood-btn').forEach(b => {
     if (parseInt(b.dataset.mood) === rec.mood) b.classList.add('selected');
   });
-  // [改善1] 選択状態を反映
   document.getElementById('mood-selector').classList.add('has-selection');
   selectedTags = new Set(rec.tags || []);
   renderTags();
   document.getElementById('good-things').value = rec.goodThings || '';
-  if (rec.why) {
-    document.getElementById('why-text').value = rec.why;
-  }
-  // [改善3] テキストがあれば「なぜ」欄も表示
+  if (rec.why) document.getElementById('why-text').value = rec.why;
   if (rec.goodThings || rec.why) {
     document.getElementById('why-section').classList.add('visible');
   }
@@ -956,12 +1275,29 @@ function setupNav() {
       btn.classList.add('active');
       if (page === 'calendar') renderCalendar();
       if (page === 'graph') renderGraph();
+      if (page === 'record') renderMemories();
     });
   });
 }
 
-// --- Calendar ---
+// [Daylio] カレンダー 月/年 切替
+function setupCalendarMode() {
+  document.querySelectorAll('.cal-mode-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      calendarMode = btn.dataset.mode;
+      document.querySelectorAll('.cal-mode-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('month-view').style.display = calendarMode === 'month' ? 'block' : 'none';
+      document.getElementById('year-view').style.display = calendarMode === 'year' ? 'block' : 'none';
+      renderCalendar();
+    });
+  });
+  document.getElementById('prev-year').onclick = () => { calendarYear--; renderYearPixels(); };
+  document.getElementById('next-year').onclick = () => { calendarYear++; renderYearPixels(); };
+}
+
 function renderCalendar() {
+  if (calendarMode === 'year') { renderYearPixels(); return; }
   const y = calendarDate.getFullYear();
   const m = calendarDate.getMonth();
   document.getElementById('month-label').textContent = `${y}年${m+1}月`;
@@ -999,14 +1335,12 @@ function renderCalendar() {
     } else if (records[key]) {
       el.classList.add('has-record');
       el.style.background = MOOD_COLORS[records[key].mood];
-      // [改善2] テキスト記述ありならドット表示
       const hasText = records[key].goodThings || records[key].why;
       el.innerHTML = `<span>${d}</span>${hasText ? '<span class="cal-dot"></span>' : ''}`;
       el.addEventListener('click', () => showDetail(key));
     } else {
       el.classList.add('no-record');
       el.innerHTML = `<span>${d}</span>`;
-      // [改善2] 記録なし日タップで新規記録モーダル
       el.addEventListener('click', () => showNewRecordModal(key));
     }
     grid.appendChild(el);
@@ -1021,12 +1355,60 @@ function renderCalendar() {
   };
 }
 
-// [改善2] 過去日の新規記録モーダル
+// [Daylio] 年間ピクセル表示
+function renderYearPixels() {
+  document.getElementById('year-label').textContent = `${calendarYear}年`;
+  const grid = document.getElementById('year-grid');
+  grid.innerHTML = '';
+  const records = loadRecords();
+  const today = new Date();
+  const monthNames = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+  for (let m = 0; m < 12; m++) {
+    const row = document.createElement('div');
+    row.className = 'year-row';
+    const label = document.createElement('div');
+    label.className = 'year-month-label';
+    label.textContent = monthNames[m];
+    row.appendChild(label);
+    const daysInMonth = new Date(calendarYear, m+1, 0).getDate();
+    for (let d = 1; d <= 31; d++) {
+      const cell = document.createElement('div');
+      if (d > daysInMonth) {
+        cell.className = 'year-cell blank';
+        row.appendChild(cell);
+        continue;
+      }
+      const key = `${calendarYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const cellDate = new Date(calendarYear, m, d);
+      const isFuture = cellDate > today && key !== todayKey();
+      if (records[key]) {
+        cell.className = 'year-cell has-record';
+        cell.style.background = MOOD_COLORS[records[key].mood];
+        cell.title = `${m+1}/${d} ${MOOD_LABELS[records[key].mood]}`;
+        cell.addEventListener('click', () => showDetail(key));
+      } else if (isFuture) {
+        cell.className = 'year-cell future';
+      } else {
+        cell.className = 'year-cell';
+        cell.title = `${m+1}/${d}`;
+        cell.addEventListener('click', () => showNewRecordModal(key));
+      }
+      row.appendChild(cell);
+    }
+    grid.appendChild(row);
+  }
+  // 凡例
+  const legend = document.getElementById('year-legend');
+  legend.innerHTML = `<span>しんどい</span><div class="legend-cells">` +
+    [1,2,3,4,5].map(i => `<div class="legend-cell" style="background:${MOOD_COLORS[i]}"></div>`).join('') +
+    `</div><span>すごく良い</span>`;
+}
+
 function showNewRecordModal(key) {
   const parts = key.split('-');
   const dateStr = `${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
   const modal = document.getElementById('modal-content');
-  let html = `
+  modal.innerHTML = `
     <div style="position:relative">
       <button class="modal-close" onclick="closeDetail()">&times;</button>
       <div class="modal-date">${dateStr}</div>
@@ -1039,9 +1421,7 @@ function showNewRecordModal(key) {
         <textarea class="text-area" id="new-good-things" placeholder="小さいことでOK" rows="2"></textarea>
         <button class="save-new-btn" id="save-new-btn" disabled>保存する</button>
       </div>
-    </div>
-  `;
-  modal.innerHTML = html;
+    </div>`;
   document.getElementById('detail-modal').classList.add('show');
 
   let newMood = null;
@@ -1054,7 +1434,6 @@ function showNewRecordModal(key) {
       if (navigator.vibrate) navigator.vibrate(30);
     });
   });
-
   document.getElementById('save-new-btn').addEventListener('click', () => {
     if (!newMood) return;
     const records = loadRecords();
@@ -1073,7 +1452,6 @@ function showNewRecordModal(key) {
   });
 }
 
-// --- Detail Modal ---
 function showDetail(key) {
   const records = loadRecords();
   const rec = records[key];
@@ -1085,11 +1463,13 @@ function showDetail(key) {
     <div style="position:relative">
       <button class="modal-close" onclick="closeDetail()">&times;</button>
       <div class="modal-date">${dateStr}</div>
-      <div class="mood-display" style="background:${MOOD_COLORS[rec.mood]}">${MOOD_LABELS[rec.mood]}</div>
-  `;
+      <div class="mood-display" style="background:${MOOD_COLORS[rec.mood]}">${MOOD_LABELS[rec.mood]}</div>`;
   if (rec.tags && rec.tags.length) {
     html += `<div class="detail-section"><div class="detail-label">できごと</div><div class="detail-tags">`;
-    rec.tags.forEach(t => html += `<span class="detail-tag">${escapeHtml(t)}</span>`);
+    rec.tags.forEach(t => {
+      const ic = tagIcon(t);
+      html += `<span class="detail-tag">${ic ? ic + ' ' : ''}${escapeHtml(t)}</span>`;
+    });
     html += `</div></div>`;
   }
   if (rec.goodThings) {
@@ -1115,10 +1495,11 @@ function deleteRecord(key) {
   closeDetail();
   renderCalendar();
   renderGraph();
+  renderMemories();
   if (key === todayKey()) {
     currentMood = null;
     selectedTags.clear();
-    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('#mood-selector .mood-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('mood-selector').classList.remove('has-selection');
     document.getElementById('good-things').value = '';
     document.getElementById('why-text').value = '';
@@ -1131,7 +1512,7 @@ document.getElementById('detail-modal').addEventListener('click', (e) => {
   if (e.target === document.getElementById('detail-modal')) closeDetail();
 });
 
-// --- Graph ---
+// --- Graph + Stats ---
 function renderGraph() {
   const canvas = document.getElementById('graph-canvas');
   const ctx = canvas.getContext('2d');
@@ -1153,11 +1534,9 @@ function renderGraph() {
     const key = getDateKey(d);
     days.push({ date: d, key, record: records[key] || null });
   }
-
   const padL = 30, padR = 16, padT = 20, padB = 30;
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
-
   ctx.fillStyle = '#555';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'right';
@@ -1171,18 +1550,14 @@ function renderGraph() {
     ctx.lineTo(w - padR, y);
     ctx.stroke();
   }
-
   const points = [];
   days.forEach((day, i) => {
     const x = padL + (i / (graphRange - 1)) * plotW;
     if (day.record) {
       const y = padT + plotH - ((day.record.mood - 1) / 4) * plotH;
       points.push({ x, y, mood: day.record.mood });
-    } else {
-      points.push(null);
-    }
+    } else points.push(null);
   });
-
   ctx.strokeStyle = 'rgba(168,196,160,0.5)';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -1193,7 +1568,6 @@ function renderGraph() {
     else ctx.lineTo(p.x, p.y);
   });
   ctx.stroke();
-
   points.forEach(p => {
     if (!p) return;
     ctx.fillStyle = MOOD_COLORS[p.mood];
@@ -1201,7 +1575,6 @@ function renderGraph() {
     ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
     ctx.fill();
   });
-
   ctx.fillStyle = '#555';
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'center';
@@ -1211,13 +1584,135 @@ function renderGraph() {
     const x = padL + (i / (graphRange - 1)) * plotW;
     ctx.fillText(`${day.date.getMonth()+1}/${day.date.getDate()}`, x, h - 6);
   });
-
   document.querySelectorAll('.graph-range button').forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.range) === graphRange);
-    btn.onclick = () => {
-      graphRange = parseInt(btn.dataset.range);
-      renderGraph();
-    };
+    btn.onclick = () => { graphRange = parseInt(btn.dataset.range); renderGraph(); };
+  });
+
+  renderStats();
+}
+
+// [Daylio] 統計（連続記録・合計・平均・分布・よく使うタグ）
+function renderStats() {
+  const records = loadRecords();
+  const keys = Object.keys(records);
+  const total = keys.length;
+
+  // 連続記録（今日 or 昨日を起点に遡る）
+  let streak = 0;
+  const cur = new Date();
+  if (!records[getDateKey(cur)]) cur.setDate(cur.getDate() - 1);
+  while (records[getDateKey(cur)]) {
+    streak++;
+    cur.setDate(cur.getDate() - 1);
+  }
+
+  // 平均
+  let sum = 0;
+  keys.forEach(k => sum += records[k].mood);
+  const avg = total ? (sum / total).toFixed(1) : '—';
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${streak}<span class="stat-unit"> 日</span></div><div class="stat-label">連続記録</div></div>
+    <div class="stat-card"><div class="stat-value">${total}<span class="stat-unit"> 日</span></div><div class="stat-label">合計記録</div></div>
+    <div class="stat-card"><div class="stat-value">${avg}</div><div class="stat-label">平均気分</div></div>`;
+
+  // 気分の分布
+  const dist = [0,0,0,0,0,0];
+  keys.forEach(k => dist[records[k].mood]++);
+  const maxDist = Math.max(1, ...dist.slice(1));
+  let distHtml = '';
+  for (let i = 5; i >= 1; i--) {
+    const pct = (dist[i] / maxDist) * 100;
+    distHtml += `
+      <div class="mood-dist-row">
+        <div class="mood-dist-dot" style="background:${MOOD_COLORS[i]}"></div>
+        <div class="mood-dist-name">${MOOD_LABELS[i]}</div>
+        <div class="mood-dist-bar-wrap"><div class="mood-dist-bar" style="width:${pct}%;background:${MOOD_COLORS[i]}"></div></div>
+        <div class="mood-dist-count">${dist[i]}</div>
+      </div>`;
+  }
+  document.getElementById('mood-dist').innerHTML = distHtml;
+
+  // よく使うタグ
+  const tagCount = {};
+  keys.forEach(k => (records[k].tags || []).forEach(t => tagCount[t] = (tagCount[t] || 0) + 1));
+  const sorted = Object.entries(tagCount).sort((a,b) => b[1]-a[1]).slice(0, 5);
+  if (sorted.length === 0) {
+    document.getElementById('top-tags').innerHTML = '<div class="goal-empty">まだタグの記録がありません</div>';
+  } else {
+    document.getElementById('top-tags').innerHTML = sorted.map(([name, cnt]) => {
+      const ic = tagIcon(name);
+      return `<div class="top-tag-row"><span class="top-tag-name">${ic ? ic + ' ' : ''}${escapeHtml(name)}</span><span class="top-tag-count">${cnt}日</span></div>`;
+    }).join('');
+  }
+
+  renderGoals();
+}
+
+// [Daylio] 目標（週ごとのタグ目標と進捗）
+function weekStart() {
+  const d = new Date();
+  let day = d.getDay() - 1;
+  if (day < 0) day = 6;
+  d.setDate(d.getDate() - day);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function renderGoals() {
+  const goals = loadGoals();
+  const records = loadRecords();
+  const ws = weekStart();
+  const list = document.getElementById('goals-list');
+
+  const countThisWeek = (tagName) => {
+    let c = 0;
+    Object.keys(records).forEach(k => {
+      const d = new Date(k + 'T00:00:00');
+      if (d >= ws && (records[k].tags || []).includes(tagName)) c++;
+    });
+    return c;
+  };
+
+  if (goals.length === 0) {
+    list.innerHTML = '<div class="goal-empty">目標はまだありません。下から追加できます。</div>';
+  } else {
+    list.innerHTML = goals.map(g => {
+      const done = countThisWeek(g.tag);
+      const pct = Math.min(100, (done / g.perWeek) * 100);
+      const ic = tagIcon(g.tag);
+      return `
+        <div class="goal-row">
+          <div class="goal-info">
+            <div class="goal-title">${ic ? ic + ' ' : ''}${escapeHtml(g.tag)} — 週${g.perWeek}回</div>
+            <div class="goal-bar-wrap"><div class="goal-bar" style="width:${pct}%"></div></div>
+          </div>
+          <div class="goal-count">${done}/${g.perWeek}</div>
+          <button class="goal-del" data-id="${g.id}">&times;</button>
+        </div>`;
+    }).join('');
+    list.querySelectorAll('.goal-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        saveGoals(loadGoals().filter(x => x.id !== btn.dataset.id));
+        renderGoals();
+      });
+    });
+  }
+
+  // 追加フォーム
+  const tags = loadTags();
+  const form = document.getElementById('goal-add-form');
+  form.innerHTML = `
+    <select id="goal-tag-select">${tags.map(t => `<option value="${escapeHtml(t.name)}">${t.icon ? t.icon + ' ' : ''}${escapeHtml(t.name)}</option>`).join('')}</select>
+    <input type="number" id="goal-week-num" min="1" max="7" value="3">
+    <button class="goal-add-btn" id="goal-add-btn">追加</button>`;
+  document.getElementById('goal-add-btn').addEventListener('click', () => {
+    const tag = document.getElementById('goal-tag-select').value;
+    const perWeek = Math.max(1, Math.min(7, parseInt(document.getElementById('goal-week-num').value) || 1));
+    const goals2 = loadGoals();
+    goals2.push({ id: Date.now().toString(), tag, perWeek });
+    saveGoals(goals2);
+    renderGoals();
   });
 }
 
@@ -1227,10 +1722,18 @@ function openTagSettings() {
   const panel = document.getElementById('tag-settings-panel');
   let html = '<h2>タグを編集</h2><ul class="tag-list-edit">';
   tags.forEach((tag, i) => {
-    html += `<li><input type="text" value="${escapeHtml(tag)}" data-idx="${i}"><button class="del-tag" data-idx="${i}">&times;</button></li>`;
+    html += `<li>
+      <input class="icon-input" type="text" value="${escapeHtml(tag.icon)}" data-idx="${i}" data-field="icon" maxlength="2" placeholder="🙂">
+      <input class="name-input" type="text" value="${escapeHtml(tag.name)}" data-idx="${i}" data-field="name">
+      <button class="del-tag" data-idx="${i}">&times;</button>
+    </li>`;
   });
   html += `</ul>
-    <div class="add-tag-row"><input type="text" id="new-tag-input" placeholder="新しいタグ"><button id="add-tag-btn">追加</button></div>
+    <div class="add-tag-row">
+      <input class="icon-input" type="text" id="new-tag-icon" maxlength="2" placeholder="🙂">
+      <input class="name-input" type="text" id="new-tag-input" placeholder="新しいタグ">
+      <button id="add-tag-btn">追加</button>
+    </div>
     <button class="settings-close" id="close-tag-settings">閉じる</button>`;
   panel.innerHTML = html;
   document.getElementById('tag-settings').classList.add('show');
@@ -1239,9 +1742,10 @@ function openTagSettings() {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.idx);
       const t = loadTags();
+      const removed = t[idx].name;
       t.splice(idx, 1);
       saveTags(t);
-      selectedTags.delete(tags[idx]);
+      selectedTags.delete(removed);
       openTagSettings();
       renderTags();
     });
@@ -1250,21 +1754,27 @@ function openTagSettings() {
     inp.addEventListener('change', () => {
       const t = loadTags();
       const idx = parseInt(inp.dataset.idx);
-      const oldName = t[idx];
-      t[idx] = inp.value.trim();
-      saveTags(t);
-      if (selectedTags.has(oldName)) {
-        selectedTags.delete(oldName);
-        selectedTags.add(t[idx]);
+      const field = inp.dataset.field;
+      if (field === 'name') {
+        const oldName = t[idx].name;
+        t[idx].name = inp.value.trim();
+        if (selectedTags.has(oldName)) {
+          selectedTags.delete(oldName);
+          selectedTags.add(t[idx].name);
+        }
+      } else {
+        t[idx].icon = inp.value.trim();
       }
+      saveTags(t);
       renderTags();
     });
   });
   document.getElementById('add-tag-btn').addEventListener('click', () => {
     const v = document.getElementById('new-tag-input').value.trim();
     if (!v) return;
+    const ic = document.getElementById('new-tag-icon').value.trim();
     const t = loadTags();
-    t.push(v);
+    t.push({ name: v, icon: ic });
     saveTags(t);
     openTagSettings();
     renderTags();
@@ -1285,7 +1795,6 @@ function setupExport() {
   document.getElementById('export-md').addEventListener('click', exportMarkdown);
   document.getElementById('export-csv').addEventListener('click', exportCSV);
 }
-
 function exportMarkdown() {
   const records = loadRecords();
   const keys = Object.keys(records).sort();
@@ -1302,7 +1811,6 @@ function exportMarkdown() {
   });
   downloadFile('emlog.md', md, 'text/markdown');
 }
-
 function exportCSV() {
   const records = loadRecords();
   const keys = Object.keys(records).sort();
@@ -1314,7 +1822,6 @@ function exportCSV() {
   });
   downloadFile('emlog.csv', csv, 'text/csv');
 }
-
 function downloadFile(name, content, type) {
   const blob = new Blob([content], { type: type + ';charset=utf-8' });
   const a = document.createElement('a');
@@ -1326,7 +1833,7 @@ function downloadFile(name, content, type) {
 
 function escapeHtml(s) {
   const d = document.createElement('div');
-  d.textContent = s;
+  d.textContent = s == null ? '' : s;
   return d.innerHTML;
 }
 
