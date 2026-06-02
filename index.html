@@ -110,7 +110,7 @@ body {
   border-radius: 50%;
   border: 3px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,19 +120,27 @@ body {
   position: relative;
 }
 .mood-btn:active { transform: scale(0.92); }
+/* [改善1] 未選択ボタンを暗くしてコントラストで伝える */
+.mood-selector.has-selection .mood-btn:not(.selected) {
+  opacity: 0.35;
+  transform: scale(0.9);
+}
 .mood-btn.selected {
   border-color: #fff;
-  transform: scale(1.12);
-  box-shadow: 0 0 16px rgba(255,255,255,0.15);
+  transform: scale(1.15);
+  box-shadow: 0 0 20px rgba(255,255,255,0.2), 0 0 40px rgba(255,255,255,0.05);
+  opacity: 1;
 }
 .mood-btn .mood-label {
   position: absolute;
   bottom: -20px;
   font-size: 10px;
   white-space: nowrap;
-  color: var(--text-dim);
+  color: var(--text-dimmer);
+  transition: all 0.25s;
 }
-.mood-btn.selected .mood-label { color: var(--text); }
+.mood-selector.has-selection .mood-btn:not(.selected) .mood-label { opacity: 0.4; }
+.mood-btn.selected .mood-label { color: var(--text); font-weight: 600; }
 
 .mood-btn[data-mood="1"] { background: var(--mood-1); }
 .mood-btn[data-mood="2"] { background: var(--mood-2); }
@@ -195,37 +203,75 @@ body {
 }
 .text-area::placeholder { color: var(--text-dimmer); }
 
-.why-toggle {
-  margin-top: 8px;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 12px;
-  cursor: pointer;
-  padding: 4px 0;
+/* [改善3] なぜできたか欄のスライドアニメーション */
+#why-section {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
+  margin-top: 0;
 }
-.why-toggle:hover { color: var(--text); }
+#why-section.visible {
+  max-height: 200px;
+  opacity: 1;
+  margin-top: 10px;
+}
+#why-section .why-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#why-section .why-label::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* [改善3] 過去の記述を表示 */
+.past-hint {
+  font-size: 11px;
+  color: var(--text-dimmer);
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(168,196,160,0.05);
+  border-radius: 8px;
+  border-left: 2px solid rgba(168,196,160,0.2);
+  line-height: 1.5;
+  transition: opacity 0.3s;
+}
+.past-hint strong {
+  color: var(--text-dim);
+  font-weight: 500;
+}
 
 /* --- Save feedback --- */
+/* [改善1] トーストを上部に小さく表示 */
 .save-toast {
   position: fixed;
-  top: 50%;
+  top: 12px;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.8);
-  background: rgba(168,196,160,0.95);
+  transform: translateX(-50%) translateY(-50px);
+  background: rgba(168,196,160,0.9);
   color: #1a1a2e;
-  padding: 16px 32px;
-  border-radius: 16px;
-  font-size: 16px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 600;
   opacity: 0;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   pointer-events: none;
   z-index: 200;
+  backdrop-filter: blur(8px);
 }
 .save-toast.show {
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  transform: translateX(-50%) translateY(0);
 }
 
 /* --- Calendar Page --- */
@@ -263,10 +309,12 @@ body {
   text-align: center;
   padding: 4px 0;
 }
+/* [改善2] セルを縦長にしてタップ領域を拡大 */
 .cal-day {
-  aspect-ratio: 1;
+  aspect-ratio: 1 / 1.2;
   border-radius: 10px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 12px;
@@ -274,14 +322,32 @@ body {
   cursor: pointer;
   transition: all 0.15s;
   position: relative;
+  gap: 3px;
 }
-.cal-day:not(.empty):hover { opacity: 0.8; }
+.cal-day:not(.empty):not(.future):hover { opacity: 0.8; }
 .cal-day.today {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 .cal-day.has-record { color: #fff; font-weight: 600; }
 .cal-day.empty { cursor: default; }
+/* [改善2] 未来日はタップ不可に見せる */
+.cal-day.future { color: var(--text-dimmer); opacity: 0.4; cursor: default; }
+/* [改善2] 記録なし日のホバー状態 */
+.cal-day.no-record:not(.empty):not(.future) {
+  cursor: pointer;
+}
+.cal-day.no-record:not(.empty):not(.future):hover {
+  background: rgba(255,255,255,0.05);
+}
+/* [改善2] テキスト記述ありの日にドット表示 */
+.cal-day .cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.7);
+}
+.cal-day.no-record .cal-dot { display: none; }
 
 /* --- Detail Modal --- */
 .modal-overlay {
@@ -371,6 +437,55 @@ body {
   width: 100%;
 }
 .modal .delete-btn:hover { background: rgba(176,128,128,0.1); }
+
+/* [改善2] 新規記録モーダル */
+.modal .new-record-section { margin-top: 12px; }
+.modal .new-record-section .section-label { margin: 16px 0 8px; }
+.modal .new-record-mood {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 8px 0;
+}
+.modal .new-mood-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 11px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal .new-mood-btn.selected {
+  border-color: #fff;
+  transform: scale(1.15);
+  box-shadow: 0 0 12px rgba(255,255,255,0.15);
+}
+.modal .new-mood-btn[data-mood="1"] { background: var(--mood-1); }
+.modal .new-mood-btn[data-mood="2"] { background: var(--mood-2); }
+.modal .new-mood-btn[data-mood="3"] { background: var(--mood-3); }
+.modal .new-mood-btn[data-mood="4"] { background: var(--mood-4); }
+.modal .new-mood-btn[data-mood="5"] { background: var(--mood-5); }
+.modal .save-new-btn {
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.modal .save-new-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
 
 /* --- Graph Page --- */
 .graph-container {
@@ -540,9 +655,10 @@ body {
     <div class="tags-container" id="tags-container"></div>
 
     <div class="section-label">今日良かったこと・できたこと<span style="font-size:11px;color:var(--text-dimmer)"> (任意)</span></div>
-    <textarea class="text-area" id="good-things" placeholder="小さいことでOK。書けなければ空欄でも" rows="3"></textarea>
-    <button class="why-toggle" id="why-toggle">+ なぜできたか を書く</button>
-    <div id="why-section" style="display:none;margin-top:8px">
+    <textarea class="text-area" id="good-things" rows="3"></textarea>
+    <div id="past-hint"></div>
+    <div id="why-section">
+      <div class="why-label">なぜできたか</div>
       <textarea class="text-area" id="why-text" placeholder="自分のどんな工夫・選択が効いた?" rows="2"></textarea>
     </div>
   </div>
@@ -631,6 +747,18 @@ const MOOD_LABELS = ['', 'しんどい', 'いまいち', 'ふつう', '良い', 
 const MOOD_COLORS = ['', '#5c6b8a', '#7a8ba8', '#a0a0a0', '#a8c4a0', '#7db87d'];
 const DEFAULT_TAGS = ['仕事', '家族', '子ども', '読書', '睡眠', '運動', '休息', '通院・体調', '人間関係', 'お金'];
 
+// [改善3] プレースホルダのローテーション
+const PLACEHOLDERS = [
+  'ちゃんと寝た、でもOK',
+  '小さいことでOK。書けなければ空欄でも',
+  '断れた、それも立派なこと',
+  '散歩した、とか',
+  'ご飯をちゃんと食べた、とか',
+  '期限を守れた、とか',
+  '誰かに優しくできた、とか',
+  '自分のために時間を使えた、とか',
+];
+
 function getDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
@@ -660,7 +788,9 @@ let graphRange = 7;
 function init() {
   renderDate();
   renderTags();
+  setRandomPlaceholder();
   loadTodayRecord();
+  showPastHint();
   renderCalendar();
   renderGraph();
   setupNav();
@@ -676,6 +806,36 @@ function renderDate() {
     `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日(${days[d.getDay()]})`;
 }
 
+// [改善3] ランダムなプレースホルダ設定
+function setRandomPlaceholder() {
+  const ph = PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)];
+  document.getElementById('good-things').placeholder = ph;
+}
+
+// [改善3] 過去の記述をヒントとして表示
+function showPastHint() {
+  const records = loadRecords();
+  const keys = Object.keys(records).sort().reverse();
+  const hints = [];
+  for (const key of keys) {
+    if (key === todayKey()) continue;
+    const r = records[key];
+    if (r.goodThings) {
+      hints.push({ date: key, text: r.goodThings });
+    }
+    if (hints.length >= 1) break;
+  }
+  const container = document.getElementById('past-hint');
+  if (hints.length > 0) {
+    const h = hints[0];
+    const parts = h.date.split('-');
+    const label = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+    container.innerHTML = `<div class="past-hint"><strong>${label}のあなた:</strong> ${escapeHtml(h.text)}</div>`;
+  } else {
+    container.innerHTML = '';
+  }
+}
+
 // --- Mood ---
 function setupMood() {
   document.querySelectorAll('.mood-btn').forEach(btn => {
@@ -684,6 +844,10 @@ function setupMood() {
       currentMood = mood;
       document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
+      // [改善1] 選択状態クラスを親に付与
+      document.getElementById('mood-selector').classList.add('has-selection');
+      // [改善1] 触覚フィードバック
+      if (navigator.vibrate) navigator.vibrate(30);
       autoSave();
     });
   });
@@ -742,14 +906,20 @@ function showToast() {
 }
 
 function setupInputListeners() {
-  document.getElementById('good-things').addEventListener('input', autoSave);
-  document.getElementById('why-text').addEventListener('input', autoSave);
-  document.getElementById('why-toggle').addEventListener('click', () => {
-    const s = document.getElementById('why-section');
-    const visible = s.style.display !== 'none';
-    s.style.display = visible ? 'none' : 'block';
-    document.getElementById('why-toggle').textContent = visible ? '+ なぜできたか を書く' : '- なぜできたか を閉じる';
+  const goodThings = document.getElementById('good-things');
+  const whySection = document.getElementById('why-section');
+
+  goodThings.addEventListener('input', () => {
+    autoSave();
+    // [改善3] テキストを書くと「なぜできたか」が自然に現れる
+    if (goodThings.value.trim().length > 0) {
+      whySection.classList.add('visible');
+    } else if (!document.getElementById('why-text').value.trim()) {
+      whySection.classList.remove('visible');
+    }
   });
+
+  document.getElementById('why-text').addEventListener('input', autoSave);
 }
 
 // --- Load today's record ---
@@ -761,13 +931,17 @@ function loadTodayRecord() {
   document.querySelectorAll('.mood-btn').forEach(b => {
     if (parseInt(b.dataset.mood) === rec.mood) b.classList.add('selected');
   });
+  // [改善1] 選択状態を反映
+  document.getElementById('mood-selector').classList.add('has-selection');
   selectedTags = new Set(rec.tags || []);
   renderTags();
   document.getElementById('good-things').value = rec.goodThings || '';
   if (rec.why) {
     document.getElementById('why-text').value = rec.why;
-    document.getElementById('why-section').style.display = 'block';
-    document.getElementById('why-toggle').textContent = '- なぜできたか を閉じる';
+  }
+  // [改善3] テキストがあれば「なぜ」欄も表示
+  if (rec.goodThings || rec.why) {
+    document.getElementById('why-section').classList.add('visible');
   }
 }
 
@@ -805,7 +979,8 @@ function renderCalendar() {
   if (startDay < 0) startDay = 6;
   const daysInMonth = new Date(y, m+1, 0).getDate();
   const records = loadRecords();
-  const today = todayKey();
+  const today = new Date();
+  const todayStr = todayKey();
   for (let i = 0; i < startDay; i++) {
     const el = document.createElement('div');
     el.className = 'cal-day empty';
@@ -814,14 +989,26 @@ function renderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const el = document.createElement('div');
     const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cellDate = new Date(y, m, d);
+    const isFuture = cellDate > today && key !== todayStr;
     el.className = 'cal-day';
-    el.textContent = d;
-    if (key === today) el.classList.add('today');
-    if (records[key]) {
+    if (key === todayStr) el.classList.add('today');
+    if (isFuture) {
+      el.classList.add('future');
+      el.innerHTML = `<span>${d}</span>`;
+    } else if (records[key]) {
       el.classList.add('has-record');
       el.style.background = MOOD_COLORS[records[key].mood];
+      // [改善2] テキスト記述ありならドット表示
+      const hasText = records[key].goodThings || records[key].why;
+      el.innerHTML = `<span>${d}</span>${hasText ? '<span class="cal-dot"></span>' : ''}`;
+      el.addEventListener('click', () => showDetail(key));
+    } else {
+      el.classList.add('no-record');
+      el.innerHTML = `<span>${d}</span>`;
+      // [改善2] 記録なし日タップで新規記録モーダル
+      el.addEventListener('click', () => showNewRecordModal(key));
     }
-    el.addEventListener('click', () => showDetail(key));
     grid.appendChild(el);
   }
   document.getElementById('prev-month').onclick = () => {
@@ -832,6 +1019,58 @@ function renderCalendar() {
     calendarDate.setMonth(calendarDate.getMonth() + 1);
     renderCalendar();
   };
+}
+
+// [改善2] 過去日の新規記録モーダル
+function showNewRecordModal(key) {
+  const parts = key.split('-');
+  const dateStr = `${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+  const modal = document.getElementById('modal-content');
+  let html = `
+    <div style="position:relative">
+      <button class="modal-close" onclick="closeDetail()">&times;</button>
+      <div class="modal-date">${dateStr}</div>
+      <div class="new-record-section">
+        <div class="section-label" style="margin-top:0">気分を選ぶ</div>
+        <div class="new-record-mood">
+          ${[1,2,3,4,5].map(i => `<button class="new-mood-btn" data-mood="${i}" style="background:${MOOD_COLORS[i]}">${MOOD_LABELS[i].charAt(0)}</button>`).join('')}
+        </div>
+        <div class="section-label">良かったこと <span style="font-size:11px;color:var(--text-dimmer)">(任意)</span></div>
+        <textarea class="text-area" id="new-good-things" placeholder="小さいことでOK" rows="2"></textarea>
+        <button class="save-new-btn" id="save-new-btn" disabled>保存する</button>
+      </div>
+    </div>
+  `;
+  modal.innerHTML = html;
+  document.getElementById('detail-modal').classList.add('show');
+
+  let newMood = null;
+  modal.querySelectorAll('.new-mood-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      newMood = parseInt(btn.dataset.mood);
+      modal.querySelectorAll('.new-mood-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('save-new-btn').disabled = false;
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+  });
+
+  document.getElementById('save-new-btn').addEventListener('click', () => {
+    if (!newMood) return;
+    const records = loadRecords();
+    records[key] = {
+      mood: newMood,
+      tags: [],
+      goodThings: document.getElementById('new-good-things').value.trim(),
+      why: '',
+      updatedAt: new Date().toISOString()
+    };
+    saveRecords(records);
+    closeDetail();
+    renderCalendar();
+    renderGraph();
+    showToast();
+  });
 }
 
 // --- Detail Modal ---
@@ -880,8 +1119,10 @@ function deleteRecord(key) {
     currentMood = null;
     selectedTags.clear();
     document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('mood-selector').classList.remove('has-selection');
     document.getElementById('good-things').value = '';
     document.getElementById('why-text').value = '';
+    document.getElementById('why-section').classList.remove('visible');
     renderTags();
   }
 }
@@ -917,7 +1158,6 @@ function renderGraph() {
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
 
-  // Y axis labels
   ctx.fillStyle = '#555';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'right';
@@ -932,7 +1172,6 @@ function renderGraph() {
     ctx.stroke();
   }
 
-  // Plot points and lines
   const points = [];
   days.forEach((day, i) => {
     const x = padL + (i / (graphRange - 1)) * plotW;
@@ -944,7 +1183,6 @@ function renderGraph() {
     }
   });
 
-  // Lines
   ctx.strokeStyle = 'rgba(168,196,160,0.5)';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -956,7 +1194,6 @@ function renderGraph() {
   });
   ctx.stroke();
 
-  // Dots
   points.forEach(p => {
     if (!p) return;
     ctx.fillStyle = MOOD_COLORS[p.mood];
@@ -965,7 +1202,6 @@ function renderGraph() {
     ctx.fill();
   });
 
-  // X axis labels
   ctx.fillStyle = '#555';
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'center';
@@ -976,7 +1212,6 @@ function renderGraph() {
     ctx.fillText(`${day.date.getMonth()+1}/${day.date.getDate()}`, x, h - 6);
   });
 
-  // Range buttons
   document.querySelectorAll('.graph-range button').forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.range) === graphRange);
     btn.onclick = () => {
