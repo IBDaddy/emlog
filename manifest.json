@@ -1,7 +1,7 @@
 {
   "name": "emlog",
   "short_name": "emlog",
-  "description": "記録は軽く、振り返りは深く",
+  "description": "感情の流れを見える化する",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#000000",

@@ -1,19 +1,21 @@
 // emlog prototype — core: constants, helpers, MoodFace, storage, seed
 const { useState, useEffect, useRef, useCallback } = React;
 
+// 気分5段階：しんどい / いまいち / ふつう / いい / 最高
 const MOODS = [
-  { v:1, l:'しんどい',   c:'var(--m1)', raw:'#586588', face:'rgba(255,255,255,.82)', mouth:'M8 15.8 Q12 12.2 16 15.8' },
-  { v:2, l:'いまいち',   c:'var(--m2)', raw:'#76859f', face:'rgba(255,255,255,.76)', mouth:'M8.5 15.2 Q12 13.7 15.5 15.2' },
-  { v:3, l:'ふつう',     c:'var(--m3)', raw:'#9a9aa4', face:'rgba(18,18,26,.55)',    mouth:'M8.5 14.8 L15.5 14.8' },
-  { v:4, l:'良い',       c:'var(--m4)', raw:'#efb98e', face:'rgba(72,36,12,.62)',    mouth:'M8.5 14.4 Q12 16.6 15.5 14.4' },
-  { v:5, l:'すごく良い', c:'var(--m5)', raw:'#f3aa78', face:'rgba(72,36,12,.64)',    mouth:'M8 13.8 Q12 17.4 16 13.8' },
+  { v:1, l:'しんどい', c:'var(--m1)', raw:'#586588', face:'rgba(255,255,255,.82)', mouth:'M8 15.8 Q12 12.2 16 15.8' },
+  { v:2, l:'いまいち', c:'var(--m2)', raw:'#76859f', face:'rgba(255,255,255,.76)', mouth:'M8.5 15.2 Q12 13.7 15.5 15.2' },
+  { v:3, l:'ふつう',   c:'var(--m3)', raw:'#9a9aa4', face:'rgba(18,18,26,.55)',    mouth:'M8.5 14.8 L15.5 14.8' },
+  { v:4, l:'いい',     c:'var(--m4)', raw:'#efb98e', face:'rgba(72,36,12,.62)',    mouth:'M8.5 14.4 Q12 16.6 15.5 14.4' },
+  { v:5, l:'最高',     c:'var(--m5)', raw:'#f3aa78', face:'rgba(72,36,12,.64)',    mouth:'M8 13.8 Q12 17.4 16 13.8' },
 ];
 const moodMeta = (v) => MOODS[v-1];
 
+// やったこと（プレーンなテキストのみ・絵文字なし）。日記を渡してもらったら本人仕様に差し替える。
 const DEFAULT_TAGS = [
-  { name:'仕事', icon:'💼' }, { name:'運動', icon:'🏃' }, { name:'読書', icon:'📚' },
-  { name:'家族', icon:'👨‍👩‍👧' }, { name:'睡眠', icon:'😴' }, { name:'休息', icon:'☕' },
-  { name:'人間関係', icon:'🤝' }, { name:'通院・体調', icon:'🏥' },
+  '考え事・内省', '朝活', '家族時間', '運動・散歩', 'ゲーム', '風呂・サウナ',
+  '探求・つくる', '外食・お酒', '投資', '創造的な仕事', '在宅勤務', 'よく寝れた',
+  '寝不足', '残業', '体調不良', '妻とすれ違い', '職場の人間関係',
 ];
 
 const PLACEHOLDERS = [
@@ -33,11 +35,39 @@ const greeting = () => { const h=new Date().getHours();
   return h<5?'おやすみ前に':h<11?'おはよう':h<17?'こんにちは':'こんばんは'; };
 
 // ---- storage ----
-const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v1';
+const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v1', SKEY='emlog_proto_settings_v1';
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
-const loadTags = () => { try{const t=JSON.parse(localStorage.getItem(TKEY)||'null');return t||DEFAULT_TAGS.map(x=>({...x}))}catch(e){return DEFAULT_TAGS.map(x=>({...x}))} };
+// タグは文字列配列。旧形式（{name,icon}）が残っていても name だけ拾って移行する。
+const loadTags = () => {
+  try{
+    const t=JSON.parse(localStorage.getItem(TKEY)||'null');
+    if(!t) return [...DEFAULT_TAGS];
+    return t.map(x=> typeof x==='string'? x : (x&&x.name)?x.name:'').filter(Boolean);
+  }catch(e){ return [...DEFAULT_TAGS]; }
+};
 const saveTagsLS = (t) => localStorage.setItem(TKEY, JSON.stringify(t));
+const DEFAULT_SETTINGS = { reminderOn:false, reminderTime:'21:00' };
+const loadSettings = () => { try{return {...DEFAULT_SETTINGS,...(JSON.parse(localStorage.getItem(SKEY)||'{}'))}}catch(e){return {...DEFAULT_SETTINGS}} };
+const saveSettingsLS = (s) => localStorage.setItem(SKEY, JSON.stringify(s));
+
+// ---- image downscale (写真添付：localStorage に収まるよう縮小して dataURL 化) ----
+function fileToThumb(file, maxPx=900, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(); const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let {width:w,height:h}=img;
+      if(w>h && w>maxPx){ h=Math.round(h*maxPx/w); w=maxPx; }
+      else if(h>=w && h>maxPx){ w=Math.round(w*maxPx/h); h=maxPx; }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      resolve(cv.toDataURL('image/jpeg',quality));
+    };
+    img.onerror=(e)=>{ URL.revokeObjectURL(url); reject(e); };
+    img.src=url;
+  });
+}
 
 // ---- seed sample data (first run) so calendar/insights feel alive ----
 function seedData(){
@@ -53,8 +83,7 @@ function seedData(){
     '', '', '',
   ];
   const whys = ['早く起きられたから。前の夜にスマホを遠ざけたのが効いた。','無理をしなかったから。',''];
-  const tagSets = [['仕事','運動'],['読書'],['睡眠','休息'],['家族'],['運動','休息'],['仕事'],[]];
-  // last ~50 days with gaps, weighted toward okay/good
+  const tagSets = [['朝活','運動・散歩'],['考え事・内省'],['よく寝れた','風呂・サウナ'],['家族時間'],['探求・つくる','在宅勤務'],['創造的な仕事'],[]];
   for(let i=1;i<=52;i++){
     if(Math.random()<0.22) continue; // gaps
     const d=new Date(today); d.setDate(d.getDate()-i);
@@ -64,14 +93,13 @@ function seedData(){
       mood, tags: tagSets[Math.floor(Math.random()*tagSets.length)],
       goodThings: notes[Math.floor(Math.random()*notes.length)],
       why: Math.random()<0.3?whys[Math.floor(Math.random()*whys.length)]:'',
-      updatedAt:d.toISOString(),
+      photo:'', updatedAt:d.toISOString(),
     };
   }
-  // guaranteed memories: 1 month & 1 year ago today
   const mAgo=new Date(today); mAgo.setMonth(mAgo.getMonth()-1);
-  recs[keyOf(mAgo)] = { mood:4, tags:['読書'], goodThings:'新しい本を読み始めた日。', why:'', updatedAt:mAgo.toISOString() };
+  recs[keyOf(mAgo)] = { mood:4, tags:['考え事・内省'], goodThings:'新しい本を読み始めた日。', why:'', photo:'', updatedAt:mAgo.toISOString() };
   const yAgo=new Date(today); yAgo.setFullYear(yAgo.getFullYear()-1);
-  recs[keyOf(yAgo)] = { mood:3, tags:['仕事','休息'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', updatedAt:yAgo.toISOString() };
+  recs[keyOf(yAgo)] = { mood:3, tags:['創造的な仕事','風呂・サウナ'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', photo:'', updatedAt:yAgo.toISOString() };
   return recs;
 }
 
@@ -103,6 +131,14 @@ function MoodSelector({ value, onPick, showLabels=true }){
 
 // ---- tiny haptic ----
 const buzz = (ms=22) => { try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} };
+
+// ---- gear icon ----
+const GearIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+  </svg>
+);
 
 
 // ============ CALENDAR ============
@@ -181,7 +217,7 @@ function CalendarScreen({ records, onOpenDay }){
         <div className="ylegend">
           <span>しんどい</span>
           <span className="cells">{MOODS.map(m=><span key={m.v} className="lc" style={{background:m.raw}}></span>)}</span>
-          <span>すごく良い</span>
+          <span>最高</span>
         </div>
       </>
     );
@@ -274,8 +310,7 @@ function InsightsScreen({ records }){
 }
 
 // ============ EXPORT ============
-function ExportScreen({ records, tags }){
-  const tagIcon=(n)=>{ const t=tags.find(x=>x.name===n); return t&&t.icon?t.icon:''; };
+function ExportScreen({ records }){
   const download=(name,text,type)=>{
     const blob=new Blob([text],{type}); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=name; a.click();
@@ -286,7 +321,7 @@ function ExportScreen({ records, tags }){
     let s='# emlog\n\n';
     ks.forEach(k=>{ const r=records[k]; const m=moodMeta(r.mood);
       s+=`## ${k}　${m.l}\n`;
-      if(r.tags&&r.tags.length) s+=`- できごと: ${r.tags.map(t=>(tagIcon(t)?tagIcon(t)+' ':'')+t).join('、')}\n`;
+      if(r.tags&&r.tags.length) s+=`- やったこと: ${r.tags.join('、')}\n`;
       if(r.goodThings) s+=`- 良かったこと: ${r.goodThings}\n`;
       if(r.why) s+=`- なぜできたか: ${r.why}\n`;
       s+='\n';
@@ -323,14 +358,13 @@ function ExportScreen({ records, tags }){
 }
 
 // ============ DAY SHEET (view existing / create new) ============
-function DaySheet({ dayKey, records, tags, onSave, onDelete, onClose }){
+function DaySheet({ dayKey, records, onSave, onDelete, onClose }){
   const existing = dayKey ? records[dayKey] : null;
   const [mood,setMood]=useState(existing?existing.mood:null);
   const [note,setNote]=useState(existing?existing.goodThings||'':'');
   useEffect(()=>{ const e=dayKey?records[dayKey]:null; setMood(e?e.mood:null); setNote(e?e.goodThings||'':''); },[dayKey]);
   if(!dayKey) return null;
   const d=new Date(dayKey+'T00:00:00');
-  const tagIcon=(n)=>{ const t=tags.find(x=>x.name===n); return t&&t.icon?t.icon:''; };
 
   if(existing){
     const m=moodMeta(existing.mood);
@@ -342,13 +376,15 @@ function DaySheet({ dayKey, records, tags, onSave, onDelete, onClose }){
           <span className="mp-face"><MoodFace v={existing.mood} size={18}/></span>{m.l}
         </div>
         {existing.tags&&existing.tags.length>0 &&
-          <div className="d-sec"><div className="d-lbl">Moments</div>
-            <div className="d-tags">{existing.tags.map(t=><span key={t} className="d-tag">{tagIcon(t)&&<span>{tagIcon(t)}</span>}{t}</span>)}</div>
+          <div className="d-sec"><div className="d-lbl">やったこと</div>
+            <div className="d-tags">{existing.tags.map(t=><span key={t} className="d-tag">{t}</span>)}</div>
           </div>}
         {existing.goodThings &&
-          <div className="d-sec"><div className="d-lbl">One good thing</div><div className="d-text">{existing.goodThings}</div></div>}
+          <div className="d-sec"><div className="d-lbl">今日の良かったこと</div><div className="d-text">{existing.goodThings}</div></div>}
         {existing.why &&
-          <div className="d-sec"><div className="d-lbl">Why</div><div className="d-text" style={{color:'var(--dim)'}}>{existing.why}</div></div>}
+          <div className="d-sec"><div className="d-lbl">なぜできた</div><div className="d-text" style={{color:'var(--dim)'}}>{existing.why}</div></div>}
+        {existing.photo &&
+          <div className="d-sec"><div className="d-lbl">Photo</div><div className="d-photo"><img src={existing.photo} alt=""/></div></div>}
         <button className="del-btn" onClick={()=>onDelete(dayKey)}>この記録を削除</button>
       </>
     );
@@ -360,38 +396,78 @@ function DaySheet({ dayKey, records, tags, onSave, onDelete, onClose }){
       <div className="sheet-date">{fmtLong(d)}</div>
       <div className="d-lbl" style={{marginTop:6}}>Mood</div>
       <MoodSelector value={mood} onPick={(v)=>{setMood(v);buzz();}}/>
-      <div className="d-lbl" style={{marginTop:22}}>One good thing <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
+      <div className="d-lbl" style={{marginTop:22}}>今日の良かったこと <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
       <div className="card ta-card"><textarea className="ta" value={note} placeholder="小さいことでOK" onChange={e=>setNote(e.target.value)} rows={2}/></div>
-      <button className="primary" disabled={!mood} onClick={()=>onSave(dayKey,{mood,tags:[],goodThings:note.trim(),why:''})}>保存する</button>
+      <button className="primary" disabled={!mood} onClick={()=>onSave(dayKey,{mood,tags:[],goodThings:note.trim(),why:'',photo:''})}>保存する</button>
     </>
   );
 }
 
 // ============ TAG MANAGER SHEET ============
 function TagManagerSheet({ tags, onChange, onClose }){
-  const [list,setList]=useState(tags.map(t=>({...t})));
-  const [ni,setNi]=useState(''); const [nn,setNn]=useState('');
-  const upd=(i,f,v)=>{ const l=list.map((t,j)=>j===i?{...t,[f]:v}:t); setList(l); };
+  const [list,setList]=useState([...tags]);
+  const [nn,setNn]=useState('');
+  const upd=(i,v)=>{ setList(list.map((t,j)=>j===i?v:t)); };
   const del=(i)=>setList(list.filter((_,j)=>j!==i));
-  const add=()=>{ if(!nn.trim())return; setList([...list,{name:nn.trim(),icon:ni.trim()}]); setNi(''); setNn(''); };
-  const commit=()=>{ onChange(list.filter(t=>t.name.trim())); onClose(); };
+  const add=()=>{ const v=nn.trim(); if(!v||list.includes(v))return; setList([...list,v]); setNn(''); };
+  const commit=()=>{ onChange(list.map(t=>t.trim()).filter(Boolean)); onClose(); };
   return (
     <>
       <div className="grab"></div>
-      <div className="sheet-date">タグを編集</div>
+      <div className="sheet-date">やったことを編集</div>
       {list.map((t,i)=>(
         <div key={i} className="tm-row">
-          <input className="tm-ic" value={t.icon} maxLength={3} placeholder="🙂" onChange={e=>upd(i,'icon',e.target.value)}/>
-          <input className="tm-nm" value={t.name} onChange={e=>upd(i,'name',e.target.value)}/>
+          <input className="tm-nm" value={t} onChange={e=>upd(i,e.target.value)}/>
           <button className="tm-del" onClick={()=>del(i)}>×</button>
         </div>
       ))}
       <div className="tm-add">
-        <input className="tm-ic" value={ni} maxLength={3} placeholder="🙂" onChange={e=>setNi(e.target.value)}/>
-        <input className="tm-nm" value={nn} placeholder="新しいタグ" onChange={e=>setNn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()}/>
+        <input className="tm-nm" value={nn} placeholder="新しい項目" onChange={e=>setNn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()}/>
         <button className="primary" onClick={add}>追加</button>
       </div>
       <button className="primary" style={{marginTop:18}} onClick={commit}>保存して閉じる</button>
+    </>
+  );
+}
+
+// ============ SETTINGS SHEET ============
+function SettingsSheet({ settings, onChange, onClose }){
+  const [s,setS]=useState({...settings});
+  const [permNote,setPermNote]=useState('');
+  const toggleReminder=async()=>{
+    const next=!s.reminderOn;
+    if(next && 'Notification' in window){
+      let perm=Notification.permission;
+      if(perm==='default') perm=await Notification.requestPermission();
+      if(perm!=='granted'){ setPermNote('通知が許可されていません。端末の設定から許可してください。'); }
+      else setPermNote('');
+    }
+    setS({...s,reminderOn:next});
+  };
+  const commit=()=>{ onChange(s); onClose(); };
+  return (
+    <>
+      <div className="grab"></div>
+      <div className="sheet-date">設定</div>
+
+      <div className="set-row">
+        <div>
+          <div className="st">夜のリマインド</div>
+          <div className="sd">1日1回、決めた時間に「記録した？」と通知します。<br/>アプリを開いている間だけ有効です。</div>
+        </div>
+        <button className={'sw'+(s.reminderOn?' on':'')} onClick={toggleReminder}></button>
+      </div>
+
+      {s.reminderOn &&
+        <div className="set-row">
+          <div className="st">通知する時刻</div>
+          <input className="time-input" type="time" value={s.reminderTime}
+                 onChange={e=>setS({...s,reminderTime:e.target.value})}/>
+        </div>}
+
+      {permNote && <div className="empty-note" style={{color:'var(--danger)'}}>{permNote}</div>}
+
+      <button className="primary" onClick={commit}>保存して閉じる</button>
     </>
   );
 }
@@ -408,14 +484,38 @@ const TABS = [
 function App(){
   const [records,setRecords] = useState(()=>{ const r=loadRecords(); if(r) return r; const s=seedData(); saveRecordsLS(s); return s; });
   const [tags,setTags] = useState(()=>loadTags());
+  const [settings,setSettings] = useState(()=>loadSettings());
   const [screen,setScreen] = useState('log');
   const [sheet,setSheet] = useState(null);
   const [toast,setToast] = useState(false);
   const toastT = useRef(null);
+  const remT = useRef(null);
 
   // persist
   useEffect(()=>saveRecordsLS(records),[records]);
   useEffect(()=>saveTagsLS(tags),[tags]);
+  useEffect(()=>saveSettingsLS(settings),[settings]);
+
+  // reminder: アプリを開いている間、今日の記録が無ければ指定時刻に通知（プロトタイプの簡易版）
+  useEffect(()=>{
+    clearTimeout(remT.current);
+    if(!settings.reminderOn || !('Notification' in window) || Notification.permission!=='granted') return;
+    const schedule=()=>{
+      const [hh,mm]=(settings.reminderTime||'21:00').split(':').map(Number);
+      const now=new Date(); const t=new Date(now);
+      t.setHours(hh,mm,0,0);
+      if(t<=now) t.setDate(t.getDate()+1);
+      const delay=Math.min(t-now, 2147483647);
+      remT.current=setTimeout(()=>{
+        if(!records[todayKey()]){
+          try{ new Notification('emlog', {body:'今日の気分、まだ残してないよ。30秒でOK。'}); }catch(e){}
+        }
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return ()=>clearTimeout(remT.current);
+  },[settings,records]);
 
   const flash = useCallback(()=>{ setToast(true); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToast(false),1400); },[]);
 
@@ -442,10 +542,11 @@ function App(){
 
       <div className="screen enter" key={screen}>
         {screen==='log' && <LogScreen records={records} tags={tags} onSaveToday={saveDay}
-            onOpenDay={(k)=>setSheet({type:'day',dayKey:k})} onManageTags={()=>setSheet({type:'tags'})}/>}
+            onOpenDay={(k)=>setSheet({type:'day',dayKey:k})} onManageTags={()=>setSheet({type:'tags'})}
+            onSettings={()=>setSheet({type:'settings'})}/>}
         {screen==='calendar' && <CalendarScreen records={records} onOpenDay={(k)=>setSheet({type:'day',dayKey:k})}/>}
         {screen==='insights' && <InsightsScreen records={records}/>}
-        {screen==='export' && <ExportScreen records={records} tags={tags}/>}
+        {screen==='export' && <ExportScreen records={records}/>}
       </div>
 
       <nav className="nav">
@@ -461,10 +562,12 @@ function App(){
       <div className={'overlay'+(sheet?' show':'')} onClick={(e)=>{ if(e.target.classList.contains('overlay')) setSheet(null); }}>
         <div className="sheet">
           {sheet && sheet.type==='day' &&
-            <DaySheet dayKey={sheet.dayKey} records={records} tags={tags}
+            <DaySheet dayKey={sheet.dayKey} records={records}
                    onSave={(k,d)=>{ saveDay(k,d); setSheet(null); }} onDelete={deleteDay} onClose={()=>setSheet(null)}/>}
           {sheet && sheet.type==='tags' &&
             <TagManagerSheet tags={tags} onChange={setTags} onClose={()=>setSheet(null)}/>}
+          {sheet && sheet.type==='settings' &&
+            <SettingsSheet settings={settings} onChange={setSettings} onClose={()=>setSheet(null)}/>}
         </div>
       </div>
     </div>
@@ -472,14 +575,16 @@ function App(){
 }
 
 // ============ LOG SCREEN ============
-function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
+function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSettings }){
   const tk = todayKey();
   const cur = records[tk] || null;
   const [mood,setMood] = useState(cur?cur.mood:null);
   const [sel,setSel] = useState(()=>new Set(cur?cur.tags:[]));
   const [good,setGood] = useState(cur?cur.goodThings||'':'');
   const [why,setWhy] = useState(cur?cur.why||'':'');
+  const [photo,setPhoto] = useState(cur?cur.photo||'':'');
   const [ph] = useState(()=>PLACEHOLDERS[Math.floor(Math.random()*PLACEHOLDERS.length)]);
+  const fileRef = useRef(null);
   const first = useRef(true);
   const whyShown = good.trim().length>0 || why.trim().length>0;
   const now = new Date();
@@ -489,13 +594,18 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
     if(first.current){ first.current=false; return; }
     if(!mood) return;
     const t=setTimeout(()=>{
-      onSaveToday(tk,{mood,tags:[...sel],goodThings:good.trim(),why:why.trim()});
+      onSaveToday(tk,{mood,tags:[...sel],goodThings:good.trim(),why:why.trim(),photo});
     },450);
     return ()=>clearTimeout(t);
-  },[mood,sel,good,why]); // eslint-disable-line
+  },[mood,sel,good,why,photo]); // eslint-disable-line
 
   const toggle=(name)=>{ const n=new Set(sel); n.has(name)?n.delete(name):n.add(name); setSel(n); };
   const pickMood=(v)=>{ setMood(v); buzz(); };
+  const onPhoto=async(e)=>{
+    const f=e.target.files&&e.target.files[0]; if(!f) return;
+    try{ const url=await fileToThumb(f); setPhoto(url); }catch(err){ alert('画像を読み込めませんでした'); }
+    e.target.value='';
+  };
 
   // memories
   const mems=[]; const seen=new Set();
@@ -505,13 +615,16 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
   addMem(yAgo(1),'1Y ago'); addMem(mAgo(1),'1M ago'); addMem(mAgo(3),'3M ago');
   const memList=mems.slice(0,2);
 
-  const tagIcon=(n)=>{ const t=tags.find(x=>x.name===n); return t&&t.icon?t.icon:''; };
-
   return (
     <div className="scroll">
       <div className="hero">
-        <div className="eyebrow">{['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()]} · {ENMON[now.getMonth()]} {now.getDate()}</div>
-        <div className="greet">{greeting()}</div>
+        <div className="hero-top">
+          <div>
+            <div className="eyebrow">{['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()]} · {ENMON[now.getMonth()]} {now.getDate()}</div>
+            <div className="greet">{greeting()}</div>
+          </div>
+          <button className="icon-btn" onClick={onSettings} title="設定"><GearIcon/></button>
+        </div>
       </div>
 
       <div className="sec">
@@ -520,26 +633,39 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
       </div>
 
       <div className="sec">
-        <div className="lbl">Moments <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
+        <div className="lbl">やったこと <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
         <div className="chips">
           {tags.map(t=>(
-            <button key={t.name} className={'chip'+(sel.has(t.name)?' on':'')} onClick={()=>toggle(t.name)}>
-              {t.icon&&<span>{t.icon}</span>}{t.name}
-            </button>
+            <button key={t} className={'chip'+(sel.has(t)?' on':'')} onClick={()=>toggle(t)}>{t}</button>
           ))}
           <button className="chip ghost" onClick={onManageTags}>＋ 編集</button>
         </div>
       </div>
 
       <div className="sec">
-        <div className="lbl">One good thing <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
+        <div className="lbl">今日の良かったこと <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
         <div className="card">
           <textarea className="ta" value={good} placeholder={ph} onChange={e=>setGood(e.target.value)} rows={2}/>
           <div className={'why'+(whyShown?' show':'')}>
-            <div className="wl">Why · なぜできた？</div>
-            <textarea className="ta" value={why} placeholder="自分のどんな工夫・選択が効いた？" onChange={e=>setWhy(e.target.value)} rows={2}/>
+            <div className="wl">なぜそれが起きた？</div>
+            <textarea className="ta" value={why} placeholder="自分のどんな選択・状況のおかげ？" onChange={e=>setWhy(e.target.value)} rows={2}/>
           </div>
         </div>
+
+        {photo ?
+          <div className="photo-wrap">
+            <img src={photo} alt=""/>
+            <button className="photo-rm" onClick={()=>setPhoto('')}>×</button>
+          </div>
+          :
+          <>
+            <button className="photo-add" onClick={()=>fileRef.current&&fileRef.current.click()}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5.5" width="18" height="14" rx="3"/><circle cx="8.5" cy="11" r="1.6"/><path d="M21 16l-5-5-9 8.5"/></svg>
+              写真をつける
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPhoto}/>
+          </>
+        }
 
         {memList.length>0 &&
           <div className="mem">
