@@ -43,7 +43,7 @@ const greeting = () => { const h=new Date().getHours();
   return h<5?'おやすみ前に':h<11?'おはよう':h<17?'こんにちは':'こんばんは'; };
 
 // ---- storage ----
-const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v1', SKEY='emlog_proto_settings_v1';
+const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v2', SKEY='emlog_proto_settings_v1';
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
 // タグは {name, neg} の配列。旧形式（文字列 / {name,icon}）が残っていても移行する。
