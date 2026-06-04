@@ -92,6 +92,11 @@ body{
 .chip.on{color:var(--text);font-weight:600;background:color-mix(in srgb,var(--ac) 18%,transparent);
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 38%,transparent);}
 .chip.ghost{background:none;box-shadow:inset 0 0 0 1px var(--hair);color:var(--dimmer);}
+.chip.neg.on{color:var(--text);font-weight:600;background:color-mix(in srgb,var(--m2) 26%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m2) 50%,transparent);}
+.grp-lbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--m2);font-weight:600;margin:16px 0 11px;display:flex;align-items:center;gap:8px;}
+.grp-lbl::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--m2);}
 
 /* ---------- glass card + inputs ---------- */
 .card{background:var(--glass);backdrop-filter:blur(24px) saturate(1.5);
@@ -228,6 +233,8 @@ textarea.ta::placeholder{color:var(--dimmer);}
 .d-tag{padding:6px 13px;border-radius:14px;font-size:13px;color:var(--text);
   background:color-mix(in srgb,var(--ac) 14%,transparent);box-shadow:inset 0 0 0 1px var(--hair);
   display:inline-flex;gap:6px;align-items:center;}
+.d-tag.neg{background:color-mix(in srgb,var(--m2) 20%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m2) 40%,transparent);}
 .del-btn{margin-top:24px;width:100%;background:none;border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);
   color:var(--danger);padding:13px;border-radius:16px;font-size:14px;font-family:var(--sans);cursor:pointer;transition:.18s;}
 .del-btn:active{transform:scale(.98);background:color-mix(in srgb,var(--danger) 12%,transparent);}
@@ -244,6 +251,10 @@ textarea.ta::placeholder{color:var(--dimmer);}
   padding:9px 12px;font-size:14px;font-family:var(--sans);outline:none;}
 .tm-nm:focus{outline:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 50%,transparent);}
 .tm-del{background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;}
+.tm-neg{flex:0 0 auto;border:none;border-radius:11px;padding:8px 11px;font-size:11px;font-weight:600;
+  font-family:var(--sans);cursor:pointer;background:color-mix(in srgb,var(--ac) 14%,transparent);
+  color:var(--ac);transition:.18s;white-space:nowrap;}
+.tm-neg.on{background:color-mix(in srgb,var(--m2) 26%,transparent);color:var(--m2);}
 .tm-add{display:flex;gap:9px;margin-top:14px;}
 .tm-add .primary{margin-top:0;padding:0 18px;flex:0 0 auto;width:auto;}
 

@@ -11,12 +11,19 @@ const MOODS = [
 ];
 const moodMeta = (v) => MOODS[v-1];
 
-// やったこと（プレーンなテキストのみ・絵文字なし）。日記を渡してもらったら本人仕様に差し替える。
-const DEFAULT_TAGS = [
+// やったこと・できごと（プレーンなテキスト・絵文字なし）。日記を渡してもらったら本人仕様に差し替える。
+// neg:true はしんどい側のできごと。UIで色とセクションを分けて表示する。
+const POS_TAGS = [
   '考え事・内省', '朝活（読書・ピアノ・英語）', '家族時間', '運動・散歩',
   'ゲーム', '風呂・サウナ・ととのい', '探求・つくる（AI・アプリ）', '外食・お酒',
   '投資・資産を見る', '創造的な仕事・頭脳労働', '在宅勤務', 'よく寝れた',
+];
+const NEG_TAGS = [
   '寝不足', '仕事きつい・残業', '体調わるい・不調', '妻との衝突・すれ違い', '職場の人間関係',
+];
+const DEFAULT_TAGS = [
+  ...POS_TAGS.map(n=>({name:n,neg:false})),
+  ...NEG_TAGS.map(n=>({name:n,neg:true})),
 ];
 
 const PLACEHOLDERS = [
@@ -39,13 +46,17 @@ const greeting = () => { const h=new Date().getHours();
 const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v1', SKEY='emlog_proto_settings_v1';
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
-// タグは文字列配列。旧形式（{name,icon}）が残っていても name だけ拾って移行する。
+// タグは {name, neg} の配列。旧形式（文字列 / {name,icon}）が残っていても移行する。
 const loadTags = () => {
   try{
     const t=JSON.parse(localStorage.getItem(TKEY)||'null');
-    if(!t) return [...DEFAULT_TAGS];
-    return t.map(x=> typeof x==='string'? x : (x&&x.name)?x.name:'').filter(Boolean);
-  }catch(e){ return [...DEFAULT_TAGS]; }
+    if(!t) return DEFAULT_TAGS.map(x=>({...x}));
+    return t.map(x=>{
+      if(typeof x==='string') return { name:x, neg:NEG_TAGS.includes(x) };
+      if(x&&x.name) return { name:x.name, neg: x.neg!=null ? !!x.neg : NEG_TAGS.includes(x.name) };
+      return null;
+    }).filter(Boolean);
+  }catch(e){ return DEFAULT_TAGS.map(x=>({...x})); }
 };
 const saveTagsLS = (t) => localStorage.setItem(TKEY, JSON.stringify(t));
 const DEFAULT_SETTINGS = { reminderOn:false, reminderTime:'21:00' };
@@ -359,13 +370,14 @@ function ExportScreen({ records }){
 }
 
 // ============ DAY SHEET (view existing / create new) ============
-function DaySheet({ dayKey, records, onSave, onDelete, onClose }){
+function DaySheet({ dayKey, records, tags=[], onSave, onDelete, onClose }){
   const existing = dayKey ? records[dayKey] : null;
   const [mood,setMood]=useState(existing?existing.mood:null);
   const [note,setNote]=useState(existing?existing.goodThings||'':'');
   useEffect(()=>{ const e=dayKey?records[dayKey]:null; setMood(e?e.mood:null); setNote(e?e.goodThings||'':''); },[dayKey]);
   if(!dayKey) return null;
   const d=new Date(dayKey+'T00:00:00');
+  const negSet=new Set(tags.filter(t=>t.neg).map(t=>t.name));
 
   if(existing){
     const m=moodMeta(existing.mood);
@@ -378,7 +390,7 @@ function DaySheet({ dayKey, records, onSave, onDelete, onClose }){
         </div>
         {existing.tags&&existing.tags.length>0 &&
           <div className="d-sec"><div className="d-lbl">やったこと</div>
-            <div className="d-tags">{existing.tags.map(t=><span key={t} className="d-tag">{t}</span>)}</div>
+            <div className="d-tags">{existing.tags.map(t=><span key={t} className={'d-tag'+(negSet.has(t)?' neg':'')}>{t}</span>)}</div>
           </div>}
         {existing.goodThings &&
           <div className="d-sec"><div className="d-lbl">今日の良かったこと</div><div className="d-text">{existing.goodThings}</div></div>}
@@ -406,24 +418,28 @@ function DaySheet({ dayKey, records, onSave, onDelete, onClose }){
 
 // ============ TAG MANAGER SHEET ============
 function TagManagerSheet({ tags, onChange, onClose }){
-  const [list,setList]=useState([...tags]);
-  const [nn,setNn]=useState('');
-  const upd=(i,v)=>{ setList(list.map((t,j)=>j===i?v:t)); };
+  const [list,setList]=useState(tags.map(t=>({...t})));
+  const [nn,setNn]=useState(''); const [nneg,setNneg]=useState(false);
+  const upd=(i,v)=>{ setList(list.map((t,j)=>j===i?{...t,name:v}:t)); };
+  const flip=(i)=>{ setList(list.map((t,j)=>j===i?{...t,neg:!t.neg}:t)); };
   const del=(i)=>setList(list.filter((_,j)=>j!==i));
-  const add=()=>{ const v=nn.trim(); if(!v||list.includes(v))return; setList([...list,v]); setNn(''); };
-  const commit=()=>{ onChange(list.map(t=>t.trim()).filter(Boolean)); onClose(); };
+  const add=()=>{ const v=nn.trim(); if(!v||list.some(t=>t.name===v))return; setList([...list,{name:v,neg:nneg}]); setNn(''); setNneg(false); };
+  const commit=()=>{ onChange(list.filter(t=>t.name.trim()).map(t=>({name:t.name.trim(),neg:!!t.neg}))); onClose(); };
   return (
     <>
       <div className="grab"></div>
-      <div className="sheet-date">やったことを編集</div>
+      <div className="sheet-date">やったこと・できごとを編集</div>
+      <div className="empty-note" style={{marginTop:0,marginBottom:8}}>「しんどい側」のできごとは右のボタンで切り替えられます。</div>
       {list.map((t,i)=>(
         <div key={i} className="tm-row">
-          <input className="tm-nm" value={t} onChange={e=>upd(i,e.target.value)}/>
+          <input className="tm-nm" value={t.name} onChange={e=>upd(i,e.target.value)}/>
+          <button className={'tm-neg'+(t.neg?' on':'')} onClick={()=>flip(i)} title="しんどい側に切り替え">{t.neg?'しんどい':'よい'}</button>
           <button className="tm-del" onClick={()=>del(i)}>×</button>
         </div>
       ))}
       <div className="tm-add">
         <input className="tm-nm" value={nn} placeholder="新しい項目" onChange={e=>setNn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()}/>
+        <button className={'tm-neg'+(nneg?' on':'')} onClick={()=>setNneg(!nneg)}>{nneg?'しんどい':'よい'}</button>
         <button className="primary" onClick={add}>追加</button>
       </div>
       <button className="primary" style={{marginTop:18}} onClick={commit}>保存して閉じる</button>
@@ -563,7 +579,7 @@ function App(){
       <div className={'overlay'+(sheet?' show':'')} onClick={(e)=>{ if(e.target.classList.contains('overlay')) setSheet(null); }}>
         <div className="sheet">
           {sheet && sheet.type==='day' &&
-            <DaySheet dayKey={sheet.dayKey} records={records}
+            <DaySheet dayKey={sheet.dayKey} records={records} tags={tags}
                    onSave={(k,d)=>{ saveDay(k,d); setSheet(null); }} onDelete={deleteDay} onClose={()=>setSheet(null)}/>}
           {sheet && sheet.type==='tags' &&
             <TagManagerSheet tags={tags} onChange={setTags} onClose={()=>setSheet(null)}/>}
@@ -636,9 +652,22 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
       <div className="sec">
         <div className="lbl">やったこと <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
         <div className="chips">
-          {tags.map(t=>(
-            <button key={t} className={'chip'+(sel.has(t)?' on':'')} onClick={()=>toggle(t)}>{t}</button>
+          {tags.filter(t=>!t.neg).map(t=>(
+            <button key={t.name} className={'chip'+(sel.has(t.name)?' on':'')} onClick={()=>toggle(t.name)}>{t.name}</button>
           ))}
+        </div>
+
+        {tags.some(t=>t.neg) &&
+          <>
+            <div className="grp-lbl">しんどかったこと</div>
+            <div className="chips">
+              {tags.filter(t=>t.neg).map(t=>(
+                <button key={t.name} className={'chip neg'+(sel.has(t.name)?' on':'')} onClick={()=>toggle(t.name)}>{t.name}</button>
+              ))}
+            </div>
+          </>}
+
+        <div className="chips" style={{marginTop:12}}>
           <button className="chip ghost" onClick={onManageTags}>＋ 編集</button>
         </div>
       </div>
