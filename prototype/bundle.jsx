@@ -13,9 +13,10 @@ const moodMeta = (v) => MOODS[v-1];
 
 // やったこと（プレーンなテキストのみ・絵文字なし）。日記を渡してもらったら本人仕様に差し替える。
 const DEFAULT_TAGS = [
-  '考え事・内省', '朝活', '家族時間', '運動・散歩', 'ゲーム', '風呂・サウナ',
-  '探求・つくる', '外食・お酒', '投資', '創造的な仕事', '在宅勤務', 'よく寝れた',
-  '寝不足', '残業', '体調不良', '妻とすれ違い', '職場の人間関係',
+  '考え事・内省', '朝活（読書・ピアノ・英語）', '家族時間', '運動・散歩',
+  'ゲーム', '風呂・サウナ・ととのい', '探求・つくる（AI・アプリ）', '外食・お酒',
+  '投資・資産を見る', '創造的な仕事・頭脳労働', '在宅勤務', 'よく寝れた',
+  '寝不足', '仕事きつい・残業', '体調わるい・不調', '妻との衝突・すれ違い', '職場の人間関係',
 ];
 
 const PLACEHOLDERS = [
@@ -83,7 +84,7 @@ function seedData(){
     '', '', '',
   ];
   const whys = ['早く起きられたから。前の夜にスマホを遠ざけたのが効いた。','無理をしなかったから。',''];
-  const tagSets = [['朝活','運動・散歩'],['考え事・内省'],['よく寝れた','風呂・サウナ'],['家族時間'],['探求・つくる','在宅勤務'],['創造的な仕事'],[]];
+  const tagSets = [['朝活（読書・ピアノ・英語）','運動・散歩'],['考え事・内省'],['よく寝れた','風呂・サウナ・ととのい'],['家族時間'],['探求・つくる（AI・アプリ）','在宅勤務'],['創造的な仕事・頭脳労働'],[]];
   for(let i=1;i<=52;i++){
     if(Math.random()<0.22) continue; // gaps
     const d=new Date(today); d.setDate(d.getDate()-i);
@@ -99,7 +100,7 @@ function seedData(){
   const mAgo=new Date(today); mAgo.setMonth(mAgo.getMonth()-1);
   recs[keyOf(mAgo)] = { mood:4, tags:['考え事・内省'], goodThings:'新しい本を読み始めた日。', why:'', photo:'', updatedAt:mAgo.toISOString() };
   const yAgo=new Date(today); yAgo.setFullYear(yAgo.getFullYear()-1);
-  recs[keyOf(yAgo)] = { mood:3, tags:['創造的な仕事','風呂・サウナ'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', photo:'', updatedAt:yAgo.toISOString() };
+  recs[keyOf(yAgo)] = { mood:3, tags:['創造的な仕事・頭脳労働','風呂・サウナ・ととのい'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', photo:'', updatedAt:yAgo.toISOString() };
   return recs;
 }
 
