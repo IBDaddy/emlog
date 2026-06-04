@@ -1,7 +1,7 @@
-// emlog prototype — core: constants, helpers, MoodFace, storage, seed
+// emlog prototype — v3: timeline tags, line icons, explicit save, import
 const { useState, useEffect, useRef, useCallback } = React;
 
-// 気分5段階：しんどい / いまいち / ふつう / いい / 最高
+// 気分5段階
 const MOODS = [
   { v:1, l:'しんどい', c:'var(--m1)', raw:'#586588', face:'rgba(255,255,255,.82)', mouth:'M8 15.8 Q12 12.2 16 15.8' },
   { v:2, l:'いまいち', c:'var(--m2)', raw:'#76859f', face:'rgba(255,255,255,.76)', mouth:'M8.5 15.2 Q12 13.7 15.5 15.2' },
@@ -11,20 +11,53 @@ const MOODS = [
 ];
 const moodMeta = (v) => MOODS[v-1];
 
-// やったこと・できごと（プレーンなテキスト・絵文字なし）。日記を渡してもらったら本人仕様に差し替える。
-// neg:true はしんどい側のできごと。UIで色とセクションを分けて表示する。
-const POS_TAGS = [
-  '考え事・内省', '朝活（読書・ピアノ・英語）', '家族時間', '運動・散歩',
-  'ゲーム', '風呂・サウナ・ととのい', '探求・つくる（AI・アプリ）', '外食・お酒',
-  '投資・資産を見る', '創造的な仕事・頭脳労働', '在宅勤務', 'よく寝れた',
-];
-const NEG_TAGS = [
-  '寝不足', '仕事きつい・残業', '体調わるい・不調', '妻との衝突・すれ違い', '職場の人間関係',
-];
+// ---- ミニマルSVGラインアイコン (16x16 viewBox) ----
+const I = (d) => <svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+const TAG_ICONS = {
+  '考え事・内省':       ()=>I('M8 1.5a4.5 4.5 0 0 1 2.5 8.2V12h-5V9.7A4.5 4.5 0 0 1 8 1.5M6 14h4'),
+  '朝活（読書・ピアノ・英語）': ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v1M3.5 8H2.5M13.5 8h-1M4.7 4.7l.7.7M11.3 4.7l-.7.7"/><path d="M4 11a4 4 0 0 1 8 0"/><path d="M2 13h12"/></svg>,
+  '家族時間':           ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="5" r="1.8"/><circle cx="11" cy="5" r="1.8"/><path d="M1 14a4 4 0 0 1 8 0M7 14a4 4 0 0 1 8 0"/></svg>,
+  '運動・散歩':         ()=>I('M10 2.5a1.3 1.3 0 1 1 0 .01M7 6l2.5-1.5 2 2-2.5 3-2.5 1M9.5 9.5l1.5 4.5M7 6L4.5 9 3 14'),
+  'ゲーム':             ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="4" width="13" height="8" rx="3"/><path d="M5.5 6.5v3M4 8h3M10.5 7v.01M12 9v.01"/></svg>,
+  '風呂・サウナ・ととのい': ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 1.5c0 1 1.5 2 0 3M8 1.5c0 1 1.5 2 0 3M12 1.5c0 1 1.5 2 0 3"/><path d="M1.5 7h13"/><path d="M2.5 7c0 4 2 6 5.5 6s5.5-2 5.5-6"/></svg>,
+  '探求・つくる（AI・アプリ）': ()=>I('M8 1l1.5 3h3.2L10 6.5l1 3.5L8 8l-3 2 1-3.5L3.3 4H6.5z'),
+  '外食・お酒':         ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l4 5 4-5"/><path d="M8 7v6"/><path d="M5 14h6"/><path d="M4.5 4.5h7"/></svg>,
+  '投資・資産を見る':   ()=>I('M2 13l4-5 3 3 5-7'),
+  '創造的な仕事・頭脳労働': ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M4 4l1 1M11 11l1 1M12 4l-1 1M5 11l-1 1"/></svg>,
+  '在宅勤務':           ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l6-4.5L14 7"/><path d="M3.5 8v5.5h9V8"/><path d="M6.5 13.5v-4h3v4"/></svg>,
+  'よく寝れた':         ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M13 9a5 5 0 1 1-4.3-6.8A4 4 0 0 0 13 9z"/></svg>,
+  '寝不足':             ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h5l-5 4h5"/><path d="M3 8h3L3 11h3"/></svg>,
+  '仕事きつい・残業':   ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4v4.5l3 1.5"/></svg>,
+  '体調わるい・不調':   ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M6 13h4"/><path d="M5 4.5l6 3M11 4.5l-6 3"/></svg>,
+  '妻との衝突・すれ違い':()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12l3.5-4L8 10.5 12.5 4 14 6"/><path d="M10 4h4v4"/></svg>,
+  '職場の人間関係':     ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="5.5" r="1.8"/><circle cx="11" cy="5.5" r="1.8"/><path d="M1 13.5a4 4 0 0 1 8 0M7 13.5a4 4 0 0 1 8 0"/><path d="M6 8.5l4 2"/></svg>,
+};
+const TagIcon = ({name}) => { const Ic=TAG_ICONS[name]; return Ic ? <Ic/> : null; };
+
+// タグデータ: {name, neg, time} time = 'am' | 'day' | 'eve'
 const DEFAULT_TAGS = [
-  ...POS_TAGS.map(n=>({name:n,neg:false})),
-  ...NEG_TAGS.map(n=>({name:n,neg:true})),
+  { name:'よく寝れた',         neg:false, time:'am' },
+  { name:'朝活（読書・ピアノ・英語）', neg:false, time:'am' },
+  { name:'寝不足',             neg:true,  time:'am' },
+
+  { name:'創造的な仕事・頭脳労働', neg:false, time:'day' },
+  { name:'在宅勤務',           neg:false, time:'day' },
+  { name:'運動・散歩',         neg:false, time:'day' },
+  { name:'考え事・内省',       neg:false, time:'day' },
+  { name:'仕事きつい・残業',   neg:true,  time:'day' },
+  { name:'職場の人間関係',     neg:true,  time:'day' },
+  { name:'体調わるい・不調',   neg:true,  time:'day' },
+
+  { name:'家族時間',           neg:false, time:'eve' },
+  { name:'ゲーム',             neg:false, time:'eve' },
+  { name:'風呂・サウナ・ととのい', neg:false, time:'eve' },
+  { name:'外食・お酒',         neg:false, time:'eve' },
+  { name:'探求・つくる（AI・アプリ）', neg:false, time:'eve' },
+  { name:'投資・資産を見る',   neg:false, time:'eve' },
+  { name:'妻との衝突・すれ違い', neg:true, time:'eve' },
 ];
+
+const TIME_LABELS = { am:'Morning', day:'Daytime', eve:'Evening' };
 
 const PLACEHOLDERS = [
   'ちゃんと寝た、でもOK', '小さいことでOK。書けなければ空欄でも',
@@ -43,17 +76,18 @@ const greeting = () => { const h=new Date().getHours();
   return h<5?'おやすみ前に':h<11?'おはよう':h<17?'こんにちは':'こんばんは'; };
 
 // ---- storage ----
-const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v2', SKEY='emlog_proto_settings_v1';
+const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v3', SKEY='emlog_proto_settings_v1';
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
-// タグは {name, neg} の配列。旧形式（文字列 / {name,icon}）が残っていても移行する。
+const NEG_NAMES = DEFAULT_TAGS.filter(t=>t.neg).map(t=>t.name);
+const TIME_MAP = Object.fromEntries(DEFAULT_TAGS.map(t=>[t.name,t.time]));
 const loadTags = () => {
   try{
     const t=JSON.parse(localStorage.getItem(TKEY)||'null');
     if(!t) return DEFAULT_TAGS.map(x=>({...x}));
     return t.map(x=>{
-      if(typeof x==='string') return { name:x, neg:NEG_TAGS.includes(x) };
-      if(x&&x.name) return { name:x.name, neg: x.neg!=null ? !!x.neg : NEG_TAGS.includes(x.name) };
+      if(typeof x==='string') return { name:x, neg:NEG_NAMES.includes(x), time:TIME_MAP[x]||'day' };
+      if(x&&x.name) return { name:x.name, neg:x.neg!=null?!!x.neg:NEG_NAMES.includes(x.name), time:x.time||TIME_MAP[x.name]||'day' };
       return null;
     }).filter(Boolean);
   }catch(e){ return DEFAULT_TAGS.map(x=>({...x})); }
@@ -63,7 +97,7 @@ const DEFAULT_SETTINGS = { reminderOn:false, reminderTime:'21:00' };
 const loadSettings = () => { try{return {...DEFAULT_SETTINGS,...(JSON.parse(localStorage.getItem(SKEY)||'{}'))}}catch(e){return {...DEFAULT_SETTINGS}} };
 const saveSettingsLS = (s) => localStorage.setItem(SKEY, JSON.stringify(s));
 
-// ---- image downscale (写真添付：localStorage に収まるよう縮小して dataURL 化) ----
+// ---- image downscale ----
 function fileToThumb(file, maxPx=900, quality=0.72){
   return new Promise((resolve,reject)=>{
     const img=new Image(); const url=URL.createObjectURL(file);
@@ -81,7 +115,7 @@ function fileToThumb(file, maxPx=900, quality=0.72){
   });
 }
 
-// ---- seed sample data (first run) so calendar/insights feel alive ----
+// ---- seed sample data ----
 function seedData(){
   const recs = {};
   const today = new Date();
@@ -97,7 +131,7 @@ function seedData(){
   const whys = ['早く起きられたから。前の夜にスマホを遠ざけたのが効いた。','無理をしなかったから。',''];
   const tagSets = [['朝活（読書・ピアノ・英語）','運動・散歩'],['考え事・内省'],['よく寝れた','風呂・サウナ・ととのい'],['家族時間'],['探求・つくる（AI・アプリ）','在宅勤務'],['創造的な仕事・頭脳労働'],[]];
   for(let i=1;i<=52;i++){
-    if(Math.random()<0.22) continue; // gaps
+    if(Math.random()<0.22) continue;
     const d=new Date(today); d.setDate(d.getDate()-i);
     const r=Math.random();
     const mood = r<0.08?1 : r<0.24?2 : r<0.55?3 : r<0.85?4 : 5;
@@ -127,7 +161,6 @@ function MoodFace({ v, size=22, color }){
   );
 }
 
-// ---- mood selector (shared by Log + new-record sheet) ----
 function MoodSelector({ value, onPick, showLabels=true }){
   return (
     <div className={'moods' + (value?' has':'')}>
@@ -141,10 +174,8 @@ function MoodSelector({ value, onPick, showLabels=true }){
   );
 }
 
-// ---- tiny haptic ----
 const buzz = (ms=22) => { try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} };
 
-// ---- gear icon ----
 const GearIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3"/>
@@ -251,20 +282,15 @@ function CalendarScreen({ records, onOpenDay }){
 function InsightsScreen({ records }){
   const keys=Object.keys(records);
   const total=keys.length;
-  // streak
   let streak=0; const cur=new Date();
   if(!records[keyOf(cur)]) cur.setDate(cur.getDate()-1);
   while(records[keyOf(cur)]){ streak++; cur.setDate(cur.getDate()-1); }
-  // avg
   let sum=0; keys.forEach(k=>sum+=records[k].mood);
   const avg = total? (sum/total).toFixed(1):'—';
-  // distribution
   const dist=[0,0,0,0,0,0]; keys.forEach(k=>dist[records[k].mood]++);
   const maxD=Math.max(1,...dist.slice(1));
-  // top tags
   const tc={}; keys.forEach(k=>(records[k].tags||[]).forEach(t=>tc[t]=(tc[t]||0)+1));
   const top=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  // last 14 days trend
   const trend=[]; const t0=new Date();
   for(let i=13;i>=0;i--){ const d=new Date(t0); d.setDate(d.getDate()-i); trend.push(records[keyOf(d)]||null); }
 
@@ -313,7 +339,7 @@ function InsightsScreen({ records }){
         <div className="lbl">Top moments</div>
         <div style={{marginTop:14}}>
           {top.length? top.map(([n,c])=>(
-            <div key={n} className="tag-row"><span className="nm">{n}</span><span className="ct">{c}日</span></div>
+            <div key={n} className="tag-row"><span className="nm"><TagIcon name={n}/>{n}</span><span className="ct">{c}日</span></div>
           )) : <div className="empty-note">まだタグの記録がありません。</div>}
         </div>
       </div>
@@ -321,8 +347,9 @@ function InsightsScreen({ records }){
   );
 }
 
-// ============ EXPORT ============
-function ExportScreen({ records }){
+// ============ EXPORT & IMPORT ============
+function ExportScreen({ records, onImport }){
+  const fileRef = useRef(null);
   const download=(name,text,type)=>{
     const blob=new Blob([text],{type}); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=name; a.click();
@@ -349,18 +376,69 @@ function ExportScreen({ records }){
     });
     download('emlog.csv',s,'text/csv');
   };
+  const toJson=()=>{
+    download('emlog-backup.json',JSON.stringify(records,null,2),'application/json');
+  };
+  const handleImport=async(e)=>{
+    const f=e.target.files&&e.target.files[0]; if(!f) return;
+    try{
+      const text=await f.text();
+      let data;
+      if(f.name.endsWith('.json')){
+        data=JSON.parse(text);
+      } else if(f.name.endsWith('.csv')){
+        const lines=text.trim().split('\n');
+        data={};
+        for(let i=1;i<lines.length;i++){
+          const cols=lines[i].match(/(?:^|,)("(?:[^"]|"")*"|[^,]*)/g);
+          if(!cols||cols.length<3) continue;
+          const clean=cols.map(c=>c.replace(/^,/,'').replace(/^"|"$/g,'').replace(/""/g,'"'));
+          const [date,mood,,tags,good,why]=clean;
+          if(!date.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+          data[date]={
+            mood:parseInt(mood)||3,
+            tags: tags? tags.split('|').filter(Boolean) : [],
+            goodThings:good||'', why:why||'', photo:'',
+            updatedAt:new Date().toISOString(),
+          };
+        }
+      } else { alert('JSON または CSV ファイルを選んでください'); return; }
+      if(data && typeof data==='object'){
+        const count=Object.keys(data).length;
+        if(confirm(`${count}件の記録をインポートしますか？\n（同じ日付のデータは上書きされます）`)){
+          onImport(data);
+        }
+      }
+    }catch(err){ alert('ファイルを読み込めませんでした: '+err.message); }
+    e.target.value='';
+  };
   return (
     <div className="scroll">
-      <div className="hero"><div className="eyebrow">Export</div><div className="h1" style={{marginTop:12}}>もちだす</div></div>
+      <div className="hero"><div className="eyebrow">Export / Import</div><div className="h1" style={{marginTop:12}}>もちだす・とりこむ</div></div>
       <div className="sec">
+        <div className="lbl">書き出す</div>
         <button className="exp-btn" onClick={toMd}>
           <span className="exp-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span>
-          <span><div className="nm">Markdown で書き出す</div><div className="ds">読書記録と地続きの形式</div></span>
+          <span><div className="nm">Markdown</div><div className="ds">読書記録と地続きの形式</div></span>
         </button>
         <button className="exp-btn" onClick={toCsv}>
           <span className="exp-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M3.5 9.5h17M9 9.5v10M15 9.5v10"/></svg></span>
-          <span><div className="nm">CSV で書き出す</div><div className="ds">スプレッドシートで分析用</div></span>
+          <span><div className="nm">CSV</div><div className="ds">スプレッドシートで分析用</div></span>
         </button>
+        <button className="exp-btn" onClick={toJson}>
+          <span className="exp-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9.5L13 3.5z"/><path d="M13 3.5v6h6"/></svg></span>
+          <span><div className="nm">JSON バックアップ</div><div className="ds">全データをそのまま保存</div></span>
+        </button>
+      </div>
+      <div className="sec">
+        <div className="lbl">取り込む</div>
+        <button className="exp-btn" onClick={()=>fileRef.current&&fileRef.current.click()}>
+          <span className="exp-ic" style={{background:'color-mix(in srgb,var(--m3) 16%,transparent)',color:'var(--m3)'}}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15v3.5a2 2 0 002 2h12a2 2 0 002-2V15M16.5 8.5L12 4 7.5 8.5M12 4v11"/></svg>
+          </span>
+          <span><div className="nm">JSON / CSV をインポート</div><div className="ds">他のアプリや過去のデータを取り込む</div></span>
+        </button>
+        <input ref={fileRef} type="file" accept=".json,.csv" style={{display:'none'}} onChange={handleImport}/>
       </div>
       <div className="empty-note" style={{marginTop:8}}>
         記録はすべてこの端末の中だけに保存されています。<br/>外に出すときだけ、ファイルになります。
@@ -369,7 +447,7 @@ function ExportScreen({ records }){
   );
 }
 
-// ============ DAY SHEET (view existing / create new) ============
+// ============ DAY SHEET ============
 function DaySheet({ dayKey, records, tags=[], onSave, onDelete, onClose }){
   const existing = dayKey ? records[dayKey] : null;
   const [mood,setMood]=useState(existing?existing.mood:null);
@@ -390,7 +468,7 @@ function DaySheet({ dayKey, records, tags=[], onSave, onDelete, onClose }){
         </div>
         {existing.tags&&existing.tags.length>0 &&
           <div className="d-sec"><div className="d-lbl">やったこと</div>
-            <div className="d-tags">{existing.tags.map(t=><span key={t} className={'d-tag'+(negSet.has(t)?' neg':'')}>{t}</span>)}</div>
+            <div className="d-tags">{existing.tags.map(t=><span key={t} className={'d-tag'+(negSet.has(t)?' neg':'')}><TagIcon name={t}/>{t}</span>)}</div>
           </div>}
         {existing.goodThings &&
           <div className="d-sec"><div className="d-lbl">今日の良かったこと</div><div className="d-text">{existing.goodThings}</div></div>}
@@ -402,7 +480,6 @@ function DaySheet({ dayKey, records, tags=[], onSave, onDelete, onClose }){
       </>
     );
   }
-  // new
   return (
     <>
       <div className="grab"></div>
@@ -419,27 +496,47 @@ function DaySheet({ dayKey, records, tags=[], onSave, onDelete, onClose }){
 // ============ TAG MANAGER SHEET ============
 function TagManagerSheet({ tags, onChange, onClose }){
   const [list,setList]=useState(tags.map(t=>({...t})));
-  const [nn,setNn]=useState(''); const [nneg,setNneg]=useState(false);
-  const upd=(i,v)=>{ setList(list.map((t,j)=>j===i?{...t,name:v}:t)); };
-  const flip=(i)=>{ setList(list.map((t,j)=>j===i?{...t,neg:!t.neg}:t)); };
+  const [nn,setNn]=useState('');
+  const [nneg,setNneg]=useState(false);
+  const [ntime,setNtime]=useState('day');
+  const upd=(i,f,v)=>{ setList(list.map((t,j)=>j===i?{...t,[f]:v}:t)); };
   const del=(i)=>setList(list.filter((_,j)=>j!==i));
-  const add=()=>{ const v=nn.trim(); if(!v||list.some(t=>t.name===v))return; setList([...list,{name:v,neg:nneg}]); setNn(''); setNneg(false); };
-  const commit=()=>{ onChange(list.filter(t=>t.name.trim()).map(t=>({name:t.name.trim(),neg:!!t.neg}))); onClose(); };
+  const add=()=>{
+    const v=nn.trim(); if(!v||list.some(t=>t.name===v))return;
+    setList([...list,{name:v,neg:nneg,time:ntime}]); setNn(''); setNneg(false);
+  };
+  const commit=()=>{ onChange(list.filter(t=>t.name.trim()).map(t=>({name:t.name.trim(),neg:!!t.neg,time:t.time||'day'}))); onClose(); };
+
+  const renderGroup=(time,label)=>{
+    const items=list.map((t,i)=>({...t,i})).filter(t=>t.time===time);
+    if(!items.length) return null;
+    return (
+      <div key={time} style={{marginBottom:16}}>
+        <div className="grp-lbl" style={{color:'var(--dim)'}}>{label}</div>
+        {items.map(t=>(
+          <div key={t.i} className="tm-row">
+            <span className="tm-ic-wrap"><TagIcon name={t.name}/></span>
+            <input className="tm-nm" value={t.name} onChange={e=>upd(t.i,'name',e.target.value)}/>
+            <button className={'tm-neg'+(t.neg?' on':'')} onClick={()=>upd(t.i,'neg',!t.neg)}>{t.neg?'−':'＋'}</button>
+            <button className="tm-del" onClick={()=>del(t.i)}>×</button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="grab"></div>
       <div className="sheet-date">やったこと・できごとを編集</div>
-      <div className="empty-note" style={{marginTop:0,marginBottom:8}}>「しんどい側」のできごとは右のボタンで切り替えられます。</div>
-      {list.map((t,i)=>(
-        <div key={i} className="tm-row">
-          <input className="tm-nm" value={t.name} onChange={e=>upd(i,e.target.value)}/>
-          <button className={'tm-neg'+(t.neg?' on':'')} onClick={()=>flip(i)} title="しんどい側に切り替え">{t.neg?'しんどい':'よい'}</button>
-          <button className="tm-del" onClick={()=>del(i)}>×</button>
-        </div>
-      ))}
+      {renderGroup('am','Morning')}
+      {renderGroup('day','Daytime')}
+      {renderGroup('eve','Evening')}
       <div className="tm-add">
         <input className="tm-nm" value={nn} placeholder="新しい項目" onChange={e=>setNn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()}/>
-        <button className={'tm-neg'+(nneg?' on':'')} onClick={()=>setNneg(!nneg)}>{nneg?'しんどい':'よい'}</button>
+        <select className="tm-time" value={ntime} onChange={e=>setNtime(e.target.value)}>
+          <option value="am">朝</option><option value="day">昼</option><option value="eve">夜</option>
+        </select>
         <button className="primary" onClick={add}>追加</button>
       </div>
       <button className="primary" style={{marginTop:18}} onClick={commit}>保存して閉じる</button>
@@ -466,7 +563,6 @@ function SettingsSheet({ settings, onChange, onClose }){
     <>
       <div className="grab"></div>
       <div className="sheet-date">設定</div>
-
       <div className="set-row">
         <div>
           <div className="st">夜のリマインド</div>
@@ -474,16 +570,13 @@ function SettingsSheet({ settings, onChange, onClose }){
         </div>
         <button className={'sw'+(s.reminderOn?' on':'')} onClick={toggleReminder}></button>
       </div>
-
       {s.reminderOn &&
         <div className="set-row">
           <div className="st">通知する時刻</div>
           <input className="time-input" type="time" value={s.reminderTime}
                  onChange={e=>setS({...s,reminderTime:e.target.value})}/>
         </div>}
-
       {permNote && <div className="empty-note" style={{color:'var(--danger)'}}>{permNote}</div>}
-
       <button className="primary" onClick={commit}>保存して閉じる</button>
     </>
   );
@@ -504,16 +597,15 @@ function App(){
   const [settings,setSettings] = useState(()=>loadSettings());
   const [screen,setScreen] = useState('log');
   const [sheet,setSheet] = useState(null);
-  const [toast,setToast] = useState(false);
+  const [toast,setToast] = useState(null);
   const toastT = useRef(null);
   const remT = useRef(null);
 
-  // persist
   useEffect(()=>saveRecordsLS(records),[records]);
   useEffect(()=>saveTagsLS(tags),[tags]);
   useEffect(()=>saveSettingsLS(settings),[settings]);
 
-  // reminder: アプリを開いている間、今日の記録が無ければ指定時刻に通知（プロトタイプの簡易版）
+  // reminder
   useEffect(()=>{
     clearTimeout(remT.current);
     if(!settings.reminderOn || !('Notification' in window) || Notification.permission!=='granted') return;
@@ -534,7 +626,7 @@ function App(){
     return ()=>clearTimeout(remT.current);
   },[settings,records]);
 
-  const flash = useCallback(()=>{ setToast(true); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToast(false),1400); },[]);
+  const flash = useCallback((msg='保存しました')=>{ setToast(msg); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToast(null),1400); },[]);
 
   const saveDay = useCallback((key,data)=>{
     setRecords(prev=>({...prev,[key]:{...data,updatedAt:new Date().toISOString()}}));
@@ -544,13 +636,21 @@ function App(){
     setRecords(prev=>{ const n={...prev}; delete n[key]; return n; });
     setSheet(null);
   },[]);
+  const importRecords = useCallback((data)=>{
+    setRecords(prev=>{
+      const merged={...prev};
+      Object.entries(data).forEach(([k,v])=>{ merged[k]={...v,updatedAt:v.updatedAt||new Date().toISOString()}; });
+      return merged;
+    });
+    flash(`${Object.keys(data).length}件をインポートしました`);
+  },[flash]);
 
   const go = (id)=>{ if(id!==screen){ setScreen(id); buzz(14);} };
 
   return (
     <div className="device">
       <div className="aura"></div><div className="aura b"></div>
-      <div className={'toast'+(toast?' show':'')}>保存しました</div>
+      {toast && <div className="toast show">{toast}</div>}
       <div className="status">
         <span>9:41</span>
         <span className="r"><span>emlog</span></span>
@@ -563,7 +663,7 @@ function App(){
             onSettings={()=>setSheet({type:'settings'})}/>}
         {screen==='calendar' && <CalendarScreen records={records} onOpenDay={(k)=>setSheet({type:'day',dayKey:k})}/>}
         {screen==='insights' && <InsightsScreen records={records}/>}
-        {screen==='export' && <ExportScreen records={records}/>}
+        {screen==='export' && <ExportScreen records={records} onImport={importRecords}/>}
       </div>
 
       <nav className="nav">
@@ -575,7 +675,6 @@ function App(){
         ))}
       </nav>
 
-      {/* bottom sheet */}
       <div className={'overlay'+(sheet?' show':'')} onClick={(e)=>{ if(e.target.classList.contains('overlay')) setSheet(null); }}>
         <div className="sheet">
           {sheet && sheet.type==='day' &&
@@ -601,27 +700,22 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
   const [why,setWhy] = useState(cur?cur.why||'':'');
   const [photo,setPhoto] = useState(cur?cur.photo||'':'');
   const [ph] = useState(()=>PLACEHOLDERS[Math.floor(Math.random()*PLACEHOLDERS.length)]);
+  const [dirty,setDirty] = useState(false);
   const fileRef = useRef(null);
-  const first = useRef(true);
   const whyShown = good.trim().length>0 || why.trim().length>0;
   const now = new Date();
 
-  // autosave (only when a mood is chosen)
-  useEffect(()=>{
-    if(first.current){ first.current=false; return; }
-    if(!mood) return;
-    const t=setTimeout(()=>{
-      onSaveToday(tk,{mood,tags:[...sel],goodThings:good.trim(),why:why.trim(),photo});
-    },450);
-    return ()=>clearTimeout(t);
-  },[mood,sel,good,why,photo]); // eslint-disable-line
-
-  const toggle=(name)=>{ const n=new Set(sel); n.has(name)?n.delete(name):n.add(name); setSel(n); };
-  const pickMood=(v)=>{ setMood(v); buzz(); };
+  const toggle=(name)=>{ const n=new Set(sel); n.has(name)?n.delete(name):n.add(name); setSel(n); setDirty(true); };
+  const pickMood=(v)=>{ setMood(v); buzz(); setDirty(true); };
   const onPhoto=async(e)=>{
     const f=e.target.files&&e.target.files[0]; if(!f) return;
-    try{ const url=await fileToThumb(f); setPhoto(url); }catch(err){ alert('画像を読み込めませんでした'); }
+    try{ const url=await fileToThumb(f); setPhoto(url); setDirty(true); }catch(err){ alert('画像を読み込めませんでした'); }
     e.target.value='';
+  };
+  const save=()=>{
+    if(!mood) return;
+    onSaveToday(tk,{mood,tags:[...sel],goodThings:good.trim(),why:why.trim(),photo});
+    setDirty(false);
   };
 
   // memories
@@ -631,6 +725,24 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
   const yAgo=(n)=>{const d=new Date(now);d.setFullYear(d.getFullYear()-n);return d;};
   addMem(yAgo(1),'1Y ago'); addMem(mAgo(1),'1M ago'); addMem(mAgo(3),'3M ago');
   const memList=mems.slice(0,2);
+
+  // group tags by time
+  const renderTimeGroup = (time, label) => {
+    const items = tags.filter(t=>t.time===time);
+    if(!items.length) return null;
+    return (
+      <>
+        <div className="time-lbl">{label}</div>
+        <div className="chips">
+          {items.map(t=>(
+            <button key={t.name} className={'chip'+(t.neg?' neg':'')+(sel.has(t.name)?' on':'')} onClick={()=>toggle(t.name)}>
+              <TagIcon name={t.name}/>{t.name}
+            </button>
+          ))}
+        </div>
+      </>
+    );
+  };
 
   return (
     <div className="scroll">
@@ -651,22 +763,9 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
 
       <div className="sec">
         <div className="lbl">やったこと <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
-        <div className="chips">
-          {tags.filter(t=>!t.neg).map(t=>(
-            <button key={t.name} className={'chip'+(sel.has(t.name)?' on':'')} onClick={()=>toggle(t.name)}>{t.name}</button>
-          ))}
-        </div>
-
-        {tags.some(t=>t.neg) &&
-          <>
-            <div className="grp-lbl">しんどかったこと</div>
-            <div className="chips">
-              {tags.filter(t=>t.neg).map(t=>(
-                <button key={t.name} className={'chip neg'+(sel.has(t.name)?' on':'')} onClick={()=>toggle(t.name)}>{t.name}</button>
-              ))}
-            </div>
-          </>}
-
+        {renderTimeGroup('am','Morning')}
+        {renderTimeGroup('day','Daytime')}
+        {renderTimeGroup('eve','Evening')}
         <div className="chips" style={{marginTop:12}}>
           <button className="chip ghost" onClick={onManageTags}>＋ 編集</button>
         </div>
@@ -675,17 +774,17 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
       <div className="sec">
         <div className="lbl">今日の良かったこと <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
         <div className="card">
-          <textarea className="ta" value={good} placeholder={ph} onChange={e=>setGood(e.target.value)} rows={2}/>
+          <textarea className="ta" value={good} placeholder={ph} onChange={e=>{setGood(e.target.value);setDirty(true);}} rows={2}/>
           <div className={'why'+(whyShown?' show':'')}>
             <div className="wl">なぜそれが起きた？</div>
-            <textarea className="ta" value={why} placeholder="自分のどんな選択・状況のおかげ？" onChange={e=>setWhy(e.target.value)} rows={2}/>
+            <textarea className="ta" value={why} placeholder="自分のどんな選択・状況のおかげ？" onChange={e=>{setWhy(e.target.value);setDirty(true);}} rows={2}/>
           </div>
         </div>
 
         {photo ?
           <div className="photo-wrap">
             <img src={photo} alt=""/>
-            <button className="photo-rm" onClick={()=>setPhoto('')}>×</button>
+            <button className="photo-rm" onClick={()=>{setPhoto('');setDirty(true);}}>×</button>
           </div>
           :
           <>
@@ -711,6 +810,12 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
             })}
           </div>}
       </div>
+
+      {mood &&
+        <button className={'save-btn'+(dirty?' pulse':'')} onClick={save}>
+          {dirty ? '保存する' : (cur ? '保存済み ✓' : '保存する')}
+        </button>
+      }
     </div>
   );
 }

@@ -84,14 +84,21 @@ body{
 .moods:not(.has) .mw{color:var(--dim);font-weight:500;height:0;}
 
 /* ---------- chips ---------- */
-.chips{display:flex;flex-wrap:wrap;gap:10px;}
-.chip{padding:11px 17px;border-radius:18px;font-size:13.5px;color:var(--dim);font-weight:500;
-  display:inline-flex;gap:7px;align-items:center;background:var(--glass);cursor:pointer;border:none;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:.18s;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{padding:10px 15px;border-radius:16px;font-size:13px;color:var(--dim);font-weight:500;
+  display:inline-flex;gap:6px;align-items:center;background:var(--glass);cursor:pointer;border:none;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:.18s;
+  min-width:0;white-space:nowrap;}
 .chip:active{transform:scale(.95);}
 .chip.on{color:var(--text);font-weight:600;background:color-mix(in srgb,var(--ac) 18%,transparent);
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 38%,transparent);}
 .chip.ghost{background:none;box-shadow:inset 0 0 0 1px var(--hair);color:var(--dimmer);}
+/* tag icon */
+.tag-ic{width:15px;height:15px;flex-shrink:0;opacity:.7;}
+.chip.on .tag-ic{opacity:1;}
+/* time group labels */
+.time-lbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--dimmer);font-weight:600;margin:14px 0 9px;}
 .chip.neg.on{color:var(--text);font-weight:600;background:color-mix(in srgb,var(--m2) 26%,transparent);
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m2) 50%,transparent);}
 .grp-lbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
@@ -257,6 +264,11 @@ textarea.ta::placeholder{color:var(--dimmer);}
 .tm-neg.on{background:color-mix(in srgb,var(--m2) 26%,transparent);color:var(--m2);}
 .tm-add{display:flex;gap:9px;margin-top:14px;}
 .tm-add .primary{margin-top:0;padding:0 18px;flex:0 0 auto;width:auto;}
+.tm-ic-wrap{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--dim);}
+.tm-ic-wrap .tag-ic{width:16px;height:16px;opacity:1;}
+.tm-time{flex:0 0 auto;border:none;border-radius:11px;padding:8px 10px;font-size:12px;font-weight:600;
+  font-family:var(--sans);cursor:pointer;background:var(--glass-2);color:var(--dim);outline:none;
+  appearance:none;-webkit-appearance:none;}
 
 /* ---------- hero top row + icon button ---------- */
 .hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
@@ -295,6 +307,15 @@ textarea.ta::placeholder{color:var(--dimmer);}
 .time-input{background:var(--glass-2);border:none;border-radius:12px;color:var(--text);
   padding:9px 12px;font-size:15px;font-family:var(--mono);outline:none;color-scheme:dark;}
 .time-input:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 50%,transparent);}
+
+/* ---------- explicit save button ---------- */
+.save-btn{position:sticky;bottom:8px;z-index:10;display:block;width:calc(100% - 12px);margin:18px auto 6px;
+  background:var(--ac);color:#1a1208;border:none;border-radius:20px;padding:15px 24px;
+  font-size:15px;font-weight:700;font-family:var(--sans);cursor:pointer;
+  box-shadow:0 14px 36px -12px var(--glow);transition:.25s cubic-bezier(.22,.9,.3,1);}
+.save-btn:active{transform:scale(.97);}
+.save-btn.pulse{animation:savePulse 1.8s ease-in-out infinite;}
+@keyframes savePulse{0%,100%{box-shadow:0 14px 36px -12px var(--glow);}50%{box-shadow:0 14px 48px -8px var(--glow);}}
 </style>
 </head>
 <body>
