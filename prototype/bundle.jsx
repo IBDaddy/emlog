@@ -12,49 +12,56 @@ const MOODS = [
 const moodMeta = (v) => MOODS[v-1];
 
 // ---- ミニマルSVGラインアイコン (16x16 viewBox) ----
-const I = (d) => <svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+// 短縮タグ名（2〜4文字）をキーにする。Daylioデータの相関分析をもとに選定。
+const svg = (inner) => <svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">{inner}</svg>;
+const I = (d) => svg(<path d={d}/>);
 const TAG_ICONS = {
-  '考え事・内省':       ()=>I('M8 1.5a4.5 4.5 0 0 1 2.5 8.2V12h-5V9.7A4.5 4.5 0 0 1 8 1.5M6 14h4'),
-  '朝活（読書・ピアノ・英語）': ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v1M3.5 8H2.5M13.5 8h-1M4.7 4.7l.7.7M11.3 4.7l-.7.7"/><path d="M4 11a4 4 0 0 1 8 0"/><path d="M2 13h12"/></svg>,
-  '家族時間':           ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="5" r="1.8"/><circle cx="11" cy="5" r="1.8"/><path d="M1 14a4 4 0 0 1 8 0M7 14a4 4 0 0 1 8 0"/></svg>,
-  '運動・散歩':         ()=>I('M10 2.5a1.3 1.3 0 1 1 0 .01M7 6l2.5-1.5 2 2-2.5 3-2.5 1M9.5 9.5l1.5 4.5M7 6L4.5 9 3 14'),
-  'ゲーム':             ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="4" width="13" height="8" rx="3"/><path d="M5.5 6.5v3M4 8h3M10.5 7v.01M12 9v.01"/></svg>,
-  '風呂・サウナ・ととのい': ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 1.5c0 1 1.5 2 0 3M8 1.5c0 1 1.5 2 0 3M12 1.5c0 1 1.5 2 0 3"/><path d="M1.5 7h13"/><path d="M2.5 7c0 4 2 6 5.5 6s5.5-2 5.5-6"/></svg>,
-  '探求・つくる（AI・アプリ）': ()=>I('M8 1l1.5 3h3.2L10 6.5l1 3.5L8 8l-3 2 1-3.5L3.3 4H6.5z'),
-  '外食・お酒':         ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l4 5 4-5"/><path d="M8 7v6"/><path d="M5 14h6"/><path d="M4.5 4.5h7"/></svg>,
-  '投資・資産を見る':   ()=>I('M2 13l4-5 3 3 5-7'),
-  '創造的な仕事・頭脳労働': ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M4 4l1 1M11 11l1 1M12 4l-1 1M5 11l-1 1"/></svg>,
-  '在宅勤務':           ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l6-4.5L14 7"/><path d="M3.5 8v5.5h9V8"/><path d="M6.5 13.5v-4h3v4"/></svg>,
-  'よく寝れた':         ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M13 9a5 5 0 1 1-4.3-6.8A4 4 0 0 0 13 9z"/></svg>,
-  '寝不足':             ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h5l-5 4h5"/><path d="M3 8h3L3 11h3"/></svg>,
-  '仕事きつい・残業':   ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4v4.5l3 1.5"/></svg>,
-  '体調わるい・不調':   ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M6 13h4"/><path d="M5 4.5l6 3M11 4.5l-6 3"/></svg>,
-  '妻との衝突・すれ違い':()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12l3.5-4L8 10.5 12.5 4 14 6"/><path d="M10 4h4v4"/></svg>,
-  '職場の人間関係':     ()=><svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="5.5" r="1.8"/><circle cx="11" cy="5.5" r="1.8"/><path d="M1 13.5a4 4 0 0 1 8 0M7 13.5a4 4 0 0 1 8 0"/><path d="M6 8.5l4 2"/></svg>,
+  // 朝
+  '早寝':   ()=>I('M13 9a5 5 0 1 1-4.3-6.8A4 4 0 0 0 13 9z'),                                   // moon
+  '運動':   ()=>I('M10 2.5a1.3 1.3 0 1 1 0 .01M7 6l2.5-1.5 2 2-2.5 3-2.5 1M9.5 9.5l1.5 4.5M7 6L4.5 9 3 14'), // runner
+  '寝不足': ()=>svg(<><path d="M9 3h4l-4 3.5h4"/><path d="M3.5 8h3l-3 3h3"/></>),                  // zZ
+  // 昼
+  '勉強':   ()=>svg(<><path d="M3 10l5-2.5L13 10l-5 2.5z"/><path d="M13 10v3"/><path d="M5.5 11v2.5c0 .8 5 .8 5 0V11"/></>), // grad cap
+  '読書':   ()=>svg(<><path d="M8 4.3C7 3.6 5.3 3.3 3.3 3.3V11.5c2 0 3.7.3 4.7 1 1-.7 2.7-1 4.7-1V3.3C10.7 3.3 9 3.6 8 4.3z"/><path d="M8 4.3v8.2"/></>), // book
+  '早帰り': ()=>svg(<><path d="M2 7l6-4.5L14 7"/><path d="M3.5 8v5.5h9V8"/><path d="M6.5 13.5v-4h3v4"/></>), // home
+  '健康食': ()=>svg(<><path d="M8 5.5c-1.2-2-4-1.6-4.5.6-.5 2.3 1.5 5 4.5 6.4 3-1.4 5-4.1 4.5-6.4C12 3.9 9.2 3.5 8 5.5z"/><path d="M8 5.5V3M8 3c.5-1 1.6-1.2 2.4-1"/></>), // apple+leaf
+  '残業':   ()=>svg(<><circle cx="8" cy="8.5" r="5.5"/><path d="M8 5v3.5l2.5 1.5"/></>),            // clock
+  'ストレス':()=>I('M9 2L3.5 9H7l-1 5 5.5-7.5H8z'),                                                // lightning
+  '体調':   ()=>svg(<><path d="M9.5 3a2 2 0 0 0-3 0L6 3.6a2 2 0 0 1-3 0 3 3 0 0 0 0 4.2L8 13l5-5.2a3 3 0 0 0 0-4.2 2 2 0 0 1-3 0z"/><path d="M3.5 8h2l1-1.5L8 9.5l1.5-3 1 1.5h2"/></>), // heart+pulse
+  // 夜
+  '風呂':   ()=>svg(<><path d="M5 1.7c0 1 1.5 1.8 0 3M9 1.7c0 1 1.5 1.8 0 3"/><path d="M1.7 7.5h12.6"/><path d="M2.7 7.5c0 3.8 1.9 5.8 5.3 5.8s5.3-2 5.3-5.8"/></>), // bath steam
+  'お酒':   ()=>svg(<><path d="M5 2.5h6l-.6 4.2a2.4 2.4 0 0 1-4.8 0z"/><path d="M8 10.7v2.8"/><path d="M5.5 13.5h5"/></>), // wine glass
+  'ゲーム': ()=>svg(<><rect x="1.5" y="4.5" width="13" height="7.5" rx="3"/><path d="M5 7v3M3.5 8.5h3M10.5 7.5v.01M12 9.5v.01"/></>), // gamepad
+  '趣味':   ()=>I('M8 2l1.6 3.5L13 6l-2.5 2.4.6 3.6L8 10.2 4.9 12l.6-3.6L3 6l3.4-.5z'),            // star
+  '買物':   ()=>svg(<><path d="M4 5.5h8l-.6 8H4.6z"/><path d="M6 5.5V4.3a2 2 0 0 1 4 0v1.2"/></>),   // shopping bag
+  '掃除':   ()=>svg(<><path d="M11 2.5l2.5 2.5-6 6-2.5-2.5z"/><path d="M5 8.5L2.5 13.5 7.5 11"/><path d="M9 4.5l2.5 2.5"/></>), // broom
+  '疲れ':   ()=>svg(<><circle cx="8" cy="8" r="6"/><path d="M5.5 7.2l1.5.8M10.5 7.2l-1.5.8M6 11c1.2-1 2.8-1 4 0"/></>), // tired face
 };
 const TagIcon = ({name}) => { const Ic=TAG_ICONS[name]; return Ic ? <Ic/> : null; };
 
 // タグデータ: {name, neg, time} time = 'am' | 'day' | 'eve'
+// Daylio実データ(483日)の出現頻度×気分相関をもとに確定。すべて2〜4文字。
 const DEFAULT_TAGS = [
-  { name:'よく寝れた',         neg:false, time:'am' },
-  { name:'朝活（読書・ピアノ・英語）', neg:false, time:'am' },
-  { name:'寝不足',             neg:true,  time:'am' },
-
-  { name:'創造的な仕事・頭脳労働', neg:false, time:'day' },
-  { name:'在宅勤務',           neg:false, time:'day' },
-  { name:'運動・散歩',         neg:false, time:'day' },
-  { name:'考え事・内省',       neg:false, time:'day' },
-  { name:'仕事きつい・残業',   neg:true,  time:'day' },
-  { name:'職場の人間関係',     neg:true,  time:'day' },
-  { name:'体調わるい・不調',   neg:true,  time:'day' },
-
-  { name:'家族時間',           neg:false, time:'eve' },
-  { name:'ゲーム',             neg:false, time:'eve' },
-  { name:'風呂・サウナ・ととのい', neg:false, time:'eve' },
-  { name:'外食・お酒',         neg:false, time:'eve' },
-  { name:'探求・つくる（AI・アプリ）', neg:false, time:'eve' },
-  { name:'投資・資産を見る',   neg:false, time:'eve' },
-  { name:'妻との衝突・すれ違い', neg:true, time:'eve' },
+  // 朝
+  { name:'早寝',   neg:false, time:'am' },   // +0.77
+  { name:'運動',   neg:false, time:'am' },   // 朝運動+0.43 / 運動+0.62
+  { name:'寝不足', neg:true,  time:'am' },   // 眠い-1.00
+  // 昼
+  { name:'勉強',   neg:false, time:'day' },  // +0.65
+  { name:'読書',   neg:false, time:'day' },  // +0.75
+  { name:'早帰り', neg:false, time:'day' },  // +0.57
+  { name:'健康食', neg:false, time:'day' },  // +0.61
+  { name:'残業',   neg:true,  time:'day' },  // 必死-0.78 / 仕事きつい
+  { name:'ストレス', neg:true, time:'day' }, // -1.24
+  { name:'体調',   neg:true,  time:'day' },  // -0.89
+  // 夜
+  { name:'風呂',   neg:false, time:'eve' },  // +0.89
+  { name:'お酒',   neg:false, time:'eve' },  // +0.82
+  { name:'ゲーム', neg:false, time:'eve' },  // +0.89
+  { name:'趣味',   neg:false, time:'eve' },  // +1.04
+  { name:'買物',   neg:false, time:'eve' },  // +0.98
+  { name:'掃除',   neg:false, time:'eve' },  // +1.04
+  { name:'疲れ',   neg:true,  time:'eve' },  // -0.75
 ];
 
 const TIME_LABELS = { am:'Morning', day:'Daytime', eve:'Evening' };
@@ -76,7 +83,7 @@ const greeting = () => { const h=new Date().getHours();
   return h<5?'おやすみ前に':h<11?'おはよう':h<17?'こんにちは':'こんばんは'; };
 
 // ---- storage ----
-const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v3', SKEY='emlog_proto_settings_v1';
+const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v4', SKEY='emlog_proto_settings_v1';
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
 const NEG_NAMES = DEFAULT_TAGS.filter(t=>t.neg).map(t=>t.name);
@@ -129,7 +136,7 @@ function seedData(){
     '', '', '',
   ];
   const whys = ['早く起きられたから。前の夜にスマホを遠ざけたのが効いた。','無理をしなかったから。',''];
-  const tagSets = [['朝活（読書・ピアノ・英語）','運動・散歩'],['考え事・内省'],['よく寝れた','風呂・サウナ・ととのい'],['家族時間'],['探求・つくる（AI・アプリ）','在宅勤務'],['創造的な仕事・頭脳労働'],[]];
+  const tagSets = [['運動','読書'],['勉強'],['早寝','風呂'],['趣味','ゲーム'],['お酒'],['残業','ストレス'],['疲れ'],[]];
   for(let i=1;i<=52;i++){
     if(Math.random()<0.22) continue;
     const d=new Date(today); d.setDate(d.getDate()-i);
@@ -143,9 +150,9 @@ function seedData(){
     };
   }
   const mAgo=new Date(today); mAgo.setMonth(mAgo.getMonth()-1);
-  recs[keyOf(mAgo)] = { mood:4, tags:['考え事・内省'], goodThings:'新しい本を読み始めた日。', why:'', photo:'', updatedAt:mAgo.toISOString() };
+  recs[keyOf(mAgo)] = { mood:4, tags:['読書'], goodThings:'新しい本を読み始めた日。', why:'', photo:'', updatedAt:mAgo.toISOString() };
   const yAgo=new Date(today); yAgo.setFullYear(yAgo.getFullYear()-1);
-  recs[keyOf(yAgo)] = { mood:3, tags:['創造的な仕事・頭脳労働','風呂・サウナ・ととのい'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', photo:'', updatedAt:yAgo.toISOString() };
+  recs[keyOf(yAgo)] = { mood:3, tags:['運動','風呂'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', photo:'', updatedAt:yAgo.toISOString() };
   return recs;
 }
 
