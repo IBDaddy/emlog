@@ -1,4 +1,4 @@
-// emlog prototype — v3: timeline tags, line icons, explicit save, import
+// emlog prototype — v4: genre tags, Daylio import, correlation analysis
 const { useState, useEffect, useRef, useCallback } = React;
 
 // 気分5段階
@@ -12,59 +12,65 @@ const MOODS = [
 const moodMeta = (v) => MOODS[v-1];
 
 // ---- ミニマルSVGラインアイコン (16x16 viewBox) ----
-// 短縮タグ名（2〜4文字）をキーにする。Daylioデータの相関分析をもとに選定。
 const svg = (inner) => <svg className="tag-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">{inner}</svg>;
 const I = (d) => svg(<path d={d}/>);
 const TAG_ICONS = {
-  // 朝
-  '早寝':   ()=>I('M13 9a5 5 0 1 1-4.3-6.8A4 4 0 0 0 13 9z'),                                   // moon
-  '運動':   ()=>I('M10 2.5a1.3 1.3 0 1 1 0 .01M7 6l2.5-1.5 2 2-2.5 3-2.5 1M9.5 9.5l1.5 4.5M7 6L4.5 9 3 14'), // runner
-  '寝不足': ()=>svg(<><path d="M9 3h4l-4 3.5h4"/><path d="M3.5 8h3l-3 3h3"/></>),                  // zZ
-  // 昼
-  '勉強':   ()=>svg(<><path d="M3 10l5-2.5L13 10l-5 2.5z"/><path d="M13 10v3"/><path d="M5.5 11v2.5c0 .8 5 .8 5 0V11"/></>), // grad cap
-  '読書':   ()=>svg(<><path d="M8 4.3C7 3.6 5.3 3.3 3.3 3.3V11.5c2 0 3.7.3 4.7 1 1-.7 2.7-1 4.7-1V3.3C10.7 3.3 9 3.6 8 4.3z"/><path d="M8 4.3v8.2"/></>), // book
-  '早帰り': ()=>svg(<><path d="M2 7l6-4.5L14 7"/><path d="M3.5 8v5.5h9V8"/><path d="M6.5 13.5v-4h3v4"/></>), // home
-  '健康食': ()=>svg(<><path d="M8 5.5c-1.2-2-4-1.6-4.5.6-.5 2.3 1.5 5 4.5 6.4 3-1.4 5-4.1 4.5-6.4C12 3.9 9.2 3.5 8 5.5z"/><path d="M8 5.5V3M8 3c.5-1 1.6-1.2 2.4-1"/></>), // apple+leaf
-  '残業':   ()=>svg(<><circle cx="8" cy="8.5" r="5.5"/><path d="M8 5v3.5l2.5 1.5"/></>),            // clock
-  'ストレス':()=>I('M9 2L3.5 9H7l-1 5 5.5-7.5H8z'),                                                // lightning
-  '体調':   ()=>svg(<><path d="M9.5 3a2 2 0 0 0-3 0L6 3.6a2 2 0 0 1-3 0 3 3 0 0 0 0 4.2L8 13l5-5.2a3 3 0 0 0 0-4.2 2 2 0 0 1-3 0z"/><path d="M3.5 8h2l1-1.5L8 9.5l1.5-3 1 1.5h2"/></>), // heart+pulse
-  // 夜
-  '風呂':   ()=>svg(<><path d="M5 1.7c0 1 1.5 1.8 0 3M9 1.7c0 1 1.5 1.8 0 3"/><path d="M1.7 7.5h12.6"/><path d="M2.7 7.5c0 3.8 1.9 5.8 5.3 5.8s5.3-2 5.3-5.8"/></>), // bath steam
-  'お酒':   ()=>svg(<><path d="M5 2.5h6l-.6 4.2a2.4 2.4 0 0 1-4.8 0z"/><path d="M8 10.7v2.8"/><path d="M5.5 13.5h5"/></>), // wine glass
-  'ゲーム': ()=>svg(<><rect x="1.5" y="4.5" width="13" height="7.5" rx="3"/><path d="M5 7v3M3.5 8.5h3M10.5 7.5v.01M12 9.5v.01"/></>), // gamepad
-  '趣味':   ()=>I('M8 2l1.6 3.5L13 6l-2.5 2.4.6 3.6L8 10.2 4.9 12l.6-3.6L3 6l3.4-.5z'),            // star
-  '買物':   ()=>svg(<><path d="M4 5.5h8l-.6 8H4.6z"/><path d="M6 5.5V4.3a2 2 0 0 1 4 0v1.2"/></>),   // shopping bag
-  '掃除':   ()=>svg(<><path d="M11 2.5l2.5 2.5-6 6-2.5-2.5z"/><path d="M5 8.5L2.5 13.5 7.5 11"/><path d="M9 4.5l2.5 2.5"/></>), // broom
-  '疲れ':   ()=>svg(<><circle cx="8" cy="8" r="6"/><path d="M5.5 7.2l1.5.8M10.5 7.2l-1.5.8M6 11c1.2-1 2.8-1 4 0"/></>), // tired face
+  // 仕事
+  '出勤':   ()=>svg(<><rect x="3" y="5" width="10" height="8" rx="1.5"/><path d="M6 5V3.5h4V5"/><path d="M3 8.5h10"/></>),
+  '在宅':   ()=>svg(<><path d="M2 7l6-4.5L14 7"/><path d="M3.5 8v5.5h9V8"/><rect x="6" y="9" width="4" height="2.5" rx=".5"/></>),
+  '勉強':   ()=>svg(<><path d="M3 10l5-2.5L13 10l-5 2.5z"/><path d="M13 10v3"/><path d="M5.5 11v2.5c0 .8 5 .8 5 0V11"/></>),
+  '早帰り': ()=>svg(<><path d="M2 7l6-4.5L14 7"/><path d="M3.5 8v5.5h9V8"/><path d="M6.5 13.5v-4h3v4"/></>),
+  '残業':   ()=>svg(<><circle cx="8" cy="8.5" r="5.5"/><path d="M8 5v3.5l2.5 1.5"/></>),
+  'ストレス':()=>I('M9 2L3.5 9H7l-1 5 5.5-7.5H8z'),
+  // 健康
+  '朝活':   ()=>svg(<><path d="M8 2v2"/><path d="M3.5 8.5h9"/><path d="M5 5.5l1.2 1.2M11 5.5l-1.2 1.2"/><path d="M4.5 11c0-2 1.6-3.5 3.5-3.5s3.5 1.5 3.5 3.5"/><path d="M3 13h10"/></>),
+  '運動':   ()=>I('M10 2.5a1.3 1.3 0 1 1 0 .01M7 6l2.5-1.5 2 2-2.5 3-2.5 1M9.5 9.5l1.5 4.5M7 6L4.5 9 3 14'),
+  'サウナ': ()=>svg(<><path d="M5 2c0 1.2 1.8 2 0 3.5M8 2c0 1.2 1.8 2 0 3.5M11 2c0 1.2 1.8 2 0 3.5"/><rect x="3" y="8" width="10" height="6" rx="2"/></>),
+  '早寝':   ()=>I('M13 9a5 5 0 1 1-4.3-6.8A4 4 0 0 0 13 9z'),
+  '健康食': ()=>svg(<><path d="M8 5.5c-1.2-2-4-1.6-4.5.6-.5 2.3 1.5 5 4.5 6.4 3-1.4 5-4.1 4.5-6.4C12 3.9 9.2 3.5 8 5.5z"/><path d="M8 5.5V3M8 3c.5-1 1.6-1.2 2.4-1"/></>),
+  '寝不足': ()=>svg(<><path d="M9 3h4l-4 3.5h4"/><path d="M3.5 8h3l-3 3h3"/></>),
+  '体調':   ()=>svg(<><path d="M9.5 3a2 2 0 0 0-3 0L6 3.6a2 2 0 0 1-3 0 3 3 0 0 0 0 4.2L8 13l5-5.2a3 3 0 0 0 0-4.2 2 2 0 0 1-3 0z"/><path d="M3.5 8h2l1-1.5L8 9.5l1.5-3 1 1.5h2"/></>),
+  '疲れ':   ()=>svg(<><circle cx="8" cy="8" r="6"/><path d="M5.5 7.2l1.5.8M10.5 7.2l-1.5.8M6 11c1.2-1 2.8-1 4 0"/></>),
+  // 趣味
+  '創作':   ()=>svg(<><path d="M10.5 2.5l3 3-7.5 7.5H3V10z"/><path d="M9 4l3 3"/></>),
+  '読書':   ()=>svg(<><path d="M8 4.3C7 3.6 5.3 3.3 3.3 3.3V11.5c2 0 3.7.3 4.7 1 1-.7 2.7-1 4.7-1V3.3C10.7 3.3 9 3.6 8 4.3z"/><path d="M8 4.3v8.2"/></>),
+  'ゲーム': ()=>svg(<><rect x="1.5" y="4.5" width="13" height="7.5" rx="3"/><path d="M5 7v3M3.5 8.5h3M10.5 7.5v.01M12 9.5v.01"/></>),
+  'お酒':   ()=>svg(<><path d="M5 2.5h6l-.6 4.2a2.4 2.4 0 0 1-4.8 0z"/><path d="M8 10.7v2.8"/><path d="M5.5 13.5h5"/></>),
+  'ガジェ': ()=>svg(<><rect x="4.5" y="2" width="7" height="12" rx="1.5"/><path d="M7 12h2"/></>),
+  '買物':   ()=>svg(<><path d="M4 5.5h8l-.6 8H4.6z"/><path d="M6 5.5V4.3a2 2 0 0 1 4 0v1.2"/></>),
+  '掃除':   ()=>svg(<><path d="M11 2.5l2.5 2.5-6 6-2.5-2.5z"/><path d="M5 8.5L2.5 13.5 7.5 11"/><path d="M9 4.5l2.5 2.5"/></>),
 };
 const TagIcon = ({name}) => { const Ic=TAG_ICONS[name]; return Ic ? <Ic/> : null; };
 
-// タグデータ: {name, neg, time} time = 'am' | 'day' | 'eve'
-// Daylio実データ(483日)の出現頻度×気分相関をもとに確定。すべて2〜4文字。
+// タグデータ: {name, neg, group} group = 'work' | 'health' | 'hobby'
 const DEFAULT_TAGS = [
-  // 朝
-  { name:'早寝',   neg:false, time:'am' },   // +0.77
-  { name:'運動',   neg:false, time:'am' },   // 朝運動+0.43 / 運動+0.62
-  { name:'寝不足', neg:true,  time:'am' },   // 眠い-1.00
-  // 昼
-  { name:'勉強',   neg:false, time:'day' },  // +0.65
-  { name:'読書',   neg:false, time:'day' },  // +0.75
-  { name:'早帰り', neg:false, time:'day' },  // +0.57
-  { name:'健康食', neg:false, time:'day' },  // +0.61
-  { name:'残業',   neg:true,  time:'day' },  // 必死-0.78 / 仕事きつい
-  { name:'ストレス', neg:true, time:'day' }, // -1.24
-  { name:'体調',   neg:true,  time:'day' },  // -0.89
-  // 夜
-  { name:'風呂',   neg:false, time:'eve' },  // +0.89
-  { name:'お酒',   neg:false, time:'eve' },  // +0.82
-  { name:'ゲーム', neg:false, time:'eve' },  // +0.89
-  { name:'趣味',   neg:false, time:'eve' },  // +1.04
-  { name:'買物',   neg:false, time:'eve' },  // +0.98
-  { name:'掃除',   neg:false, time:'eve' },  // +1.04
-  { name:'疲れ',   neg:true,  time:'eve' },  // -0.75
+  // 仕事
+  { name:'出勤',     neg:false, group:'work' },
+  { name:'在宅',     neg:false, group:'work' },
+  { name:'勉強',     neg:false, group:'work' },
+  { name:'早帰り',   neg:false, group:'work' },
+  { name:'残業',     neg:true,  group:'work' },
+  { name:'ストレス', neg:true,  group:'work' },
+  // 健康
+  { name:'朝活',     neg:false, group:'health' },
+  { name:'運動',     neg:false, group:'health' },
+  { name:'サウナ',   neg:false, group:'health' },
+  { name:'早寝',     neg:false, group:'health' },
+  { name:'健康食',   neg:false, group:'health' },
+  { name:'寝不足',   neg:true,  group:'health' },
+  { name:'体調',     neg:true,  group:'health' },
+  { name:'疲れ',     neg:true,  group:'health' },
+  // 趣味
+  { name:'創作',     neg:false, group:'hobby' },
+  { name:'読書',     neg:false, group:'hobby' },
+  { name:'ゲーム',   neg:false, group:'hobby' },
+  { name:'お酒',     neg:false, group:'hobby' },
+  { name:'ガジェ',   neg:false, group:'hobby' },
+  { name:'買物',     neg:false, group:'hobby' },
+  { name:'掃除',     neg:false, group:'hobby' },
 ];
 
-const TIME_LABELS = { am:'Morning', day:'Daytime', eve:'Evening' };
+const GROUP_LABELS = { work:'仕事', health:'健康', hobby:'趣味' };
 
 const PLACEHOLDERS = [
   'ちゃんと寝た、でもOK', '小さいことでOK。書けなければ空欄でも',
@@ -83,18 +89,22 @@ const greeting = () => { const h=new Date().getHours();
   return h<5?'おやすみ前に':h<11?'おはよう':h<17?'こんにちは':'こんばんは'; };
 
 // ---- storage ----
-const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v4', SKEY='emlog_proto_settings_v1';
+const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v5', SKEY='emlog_proto_settings_v1';
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
-const NEG_NAMES = DEFAULT_TAGS.filter(t=>t.neg).map(t=>t.name);
-const TIME_MAP = Object.fromEntries(DEFAULT_TAGS.map(t=>[t.name,t.time]));
+const NEG_NAMES = new Set(DEFAULT_TAGS.filter(t=>t.neg).map(t=>t.name));
+const GROUP_MAP = Object.fromEntries(DEFAULT_TAGS.map(t=>[t.name,t.group]));
 const loadTags = () => {
   try{
     const t=JSON.parse(localStorage.getItem(TKEY)||'null');
     if(!t) return DEFAULT_TAGS.map(x=>({...x}));
     return t.map(x=>{
-      if(typeof x==='string') return { name:x, neg:NEG_NAMES.includes(x), time:TIME_MAP[x]||'day' };
-      if(x&&x.name) return { name:x.name, neg:x.neg!=null?!!x.neg:NEG_NAMES.includes(x.name), time:x.time||TIME_MAP[x.name]||'day' };
+      if(typeof x==='string') return { name:x, neg:NEG_NAMES.has(x), group:GROUP_MAP[x]||'hobby' };
+      if(x&&x.name) {
+        let group = x.group || GROUP_MAP[x.name] || 'hobby';
+        if(x.time && !x.group) group = x.time==='am'?'health':x.time==='day'?'work':'hobby';
+        return { name:x.name, neg:x.neg!=null?!!x.neg:NEG_NAMES.has(x.name), group };
+      }
       return null;
     }).filter(Boolean);
   }catch(e){ return DEFAULT_TAGS.map(x=>({...x})); }
@@ -122,6 +132,85 @@ function fileToThumb(file, maxPx=900, quality=0.72){
   });
 }
 
+// ---- Daylio CSV parser ----
+function parseDaylioCSV(text){
+  const lines = text.trim().split('\n');
+  if(lines.length<2) return null;
+  const header = lines[0].toLowerCase();
+  if(!header.includes('full_date') && !header.includes('activities')) return null;
+
+  const cols = parseCSVRow(lines[0]);
+  const idx = {};
+  cols.forEach((c,i)=>{ idx[c.toLowerCase().trim()]=i; });
+
+  const dateCol = idx['full_date'] ?? idx['date'];
+  const moodCol = idx['mood'];
+  const actCol = idx['activities'];
+  const noteCol = idx['note'] ?? idx['note_title'];
+  if(dateCol==null || moodCol==null) return null;
+
+  const MOOD_MAP = {
+    'rad':5,'amazing':5,'すごく良い':5,'最高':5,
+    'good':4,'良い':4,'いい':4,
+    'meh':3,'okay':3,'普通':3,'ふつう':3,
+    'bad':2,'悪い':2,'いまいち':2,
+    'awful':1,'terrible':1,'すごく悪い':1,'しんどい':1,
+  };
+
+  const data = {};
+  for(let i=1;i<lines.length;i++){
+    const row = parseCSVRow(lines[i]);
+    if(!row || row.length<3) continue;
+
+    let dateStr = (row[dateCol]||'').trim();
+    const dateMatch = dateStr.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if(!dateMatch){
+      const altMatch = dateStr.match(/(\w+)\s+(\d{1,2}),?\s*(\d{4})/);
+      if(altMatch){
+        const months = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+        const mn = months[altMatch[1].toLowerCase()];
+        if(mn) dateStr = `${altMatch[3]}-${pad(mn)}-${pad(parseInt(altMatch[2]))}`;
+        else continue;
+      } else continue;
+    } else {
+      dateStr = `${dateMatch[1]}-${pad(parseInt(dateMatch[2]))}-${pad(parseInt(dateMatch[3]))}`;
+    }
+    if(!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+
+    const moodRaw = (row[moodCol]||'').trim().toLowerCase();
+    let mood = MOOD_MAP[moodRaw];
+    if(!mood){ const n=parseInt(moodRaw); mood=(n>=1&&n<=5)?n:3; }
+
+    const acts = actCol!=null && row[actCol]
+      ? row[actCol].split(/[|,]/).map(s=>s.trim()).filter(Boolean) : [];
+    const note = noteCol!=null ? (row[noteCol]||'').trim() : '';
+
+    data[dateStr] = {
+      mood, tags:acts, goodThings:note, why:'', photo:'',
+      updatedAt: new Date(dateStr+'T00:00:00').toISOString(),
+    };
+  }
+  return Object.keys(data).length>0 ? data : null;
+}
+
+function parseCSVRow(line){
+  const result=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQ){
+      if(c==='"' && line[i+1]==='"'){ cur+='"'; i++; }
+      else if(c==='"') inQ=false;
+      else cur+=c;
+    } else {
+      if(c==='"') inQ=true;
+      else if(c===','){ result.push(cur); cur=''; }
+      else cur+=c;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
 // ---- seed sample data ----
 function seedData(){
   const recs = {};
@@ -136,7 +225,7 @@ function seedData(){
     '', '', '',
   ];
   const whys = ['早く起きられたから。前の夜にスマホを遠ざけたのが効いた。','無理をしなかったから。',''];
-  const tagSets = [['運動','読書'],['勉強'],['早寝','風呂'],['趣味','ゲーム'],['お酒'],['残業','ストレス'],['疲れ'],[]];
+  const tagSets = [['運動','読書'],['勉強'],['早寝','サウナ'],['創作','ゲーム'],['お酒'],['残業','ストレス'],['疲れ'],[]];
   for(let i=1;i<=52;i++){
     if(Math.random()<0.22) continue;
     const d=new Date(today); d.setDate(d.getDate()-i);
@@ -152,7 +241,7 @@ function seedData(){
   const mAgo=new Date(today); mAgo.setMonth(mAgo.getMonth()-1);
   recs[keyOf(mAgo)] = { mood:4, tags:['読書'], goodThings:'新しい本を読み始めた日。', why:'', photo:'', updatedAt:mAgo.toISOString() };
   const yAgo=new Date(today); yAgo.setFullYear(yAgo.getFullYear()-1);
-  recs[keyOf(yAgo)] = { mood:3, tags:['運動','風呂'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', photo:'', updatedAt:yAgo.toISOString() };
+  recs[keyOf(yAgo)] = { mood:3, tags:['運動','サウナ'], goodThings:'忙しい中でも昼休みに散歩できた。', why:'', photo:'', updatedAt:yAgo.toISOString() };
   return recs;
 }
 
@@ -287,69 +376,166 @@ function CalendarScreen({ records, onOpenDay }){
 
 // ============ INSIGHTS ============
 function InsightsScreen({ records }){
+  const [tab,setTab] = useState('stats');
   const keys=Object.keys(records);
   const total=keys.length;
   let streak=0; const cur=new Date();
   if(!records[keyOf(cur)]) cur.setDate(cur.getDate()-1);
   while(records[keyOf(cur)]){ streak++; cur.setDate(cur.getDate()-1); }
   let sum=0; keys.forEach(k=>sum+=records[k].mood);
-  const avg = total? (sum/total).toFixed(1):'—';
+  const avg = total? sum/total : 0;
+  const avgStr = total? avg.toFixed(1):'—';
   const dist=[0,0,0,0,0,0]; keys.forEach(k=>dist[records[k].mood]++);
   const maxD=Math.max(1,...dist.slice(1));
+
+  // tag correlations
+  const tagMoods = {};
+  keys.forEach(k=>{
+    const r=records[k];
+    (r.tags||[]).forEach(t=>{
+      if(!tagMoods[t]) tagMoods[t]=[];
+      tagMoods[t].push(r.mood);
+    });
+  });
+  const correlations = Object.entries(tagMoods)
+    .filter(([_,moods])=>moods.length>=2)
+    .map(([tag,moods])=>{
+      const tagAvg = moods.reduce((a,b)=>a+b,0)/moods.length;
+      const delta = total? tagAvg - avg : 0;
+      return { tag, count:moods.length, avg:tagAvg, delta };
+    })
+    .sort((a,b)=>b.delta-a.delta);
+
+  const maxDelta = Math.max(0.1, ...correlations.map(c=>Math.abs(c.delta)));
+
+  // top tags
   const tc={}; keys.forEach(k=>(records[k].tags||[]).forEach(t=>tc[t]=(tc[t]||0)+1));
   const top=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // 14-day trend
   const trend=[]; const t0=new Date();
   for(let i=13;i>=0;i--){ const d=new Date(t0); d.setDate(d.getDate()-i); trend.push(records[keyOf(d)]||null); }
+
+  // mood color for avg
+  const avgMoodColor = (v) => {
+    if(v<=1.5) return MOODS[0].raw;
+    if(v<=2.5) return MOODS[1].raw;
+    if(v<=3.5) return MOODS[2].raw;
+    if(v<=4.5) return MOODS[3].raw;
+    return MOODS[4].raw;
+  };
 
   return (
     <div className="scroll">
       <div className="hero"><div className="eyebrow">Insights</div><div className="h1" style={{marginTop:12}}>つみかさね</div></div>
 
-      <div className="sec">
-        <div className="tiles">
-          <div className="tile"><div className="v">{streak}<small> 日</small></div><div className="t">連続記録</div></div>
-          <div className="tile"><div className="v">{total}<small> 日</small></div><div className="t">合計記録</div></div>
-          <div className="tile"><div className="v">{avg}</div><div className="t">平均きぶん</div></div>
-        </div>
+      <div className="seg" style={{marginBottom:22}}>
+        <button className={tab==='stats'?'on':''} onClick={()=>setTab('stats')}>STATS</button>
+        <button className={tab==='corr'?'on':''} onClick={()=>setTab('corr')}>CORRELATION</button>
       </div>
 
-      <div className="sec">
-        <div className="lbl">Last 14 days</div>
-        <div style={{display:'flex',gap:5,alignItems:'flex-end',height:46}}>
-          {trend.map((r,i)=>(
-            <div key={i} style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end',height:'100%'}}>
-              <div style={{height: r? `${20+(r.mood-1)/4*80}%`:'10%', borderRadius:6,
-                background: r? moodMeta(r.mood).raw : 'var(--glass-2)', transition:'height .5s'}}></div>
-            </div>
-          ))}
+      {tab==='stats' && <>
+        <div className="sec">
+          <div className="tiles">
+            <div className="tile"><div className="v">{streak}<small> 日</small></div><div className="t">連続記録</div></div>
+            <div className="tile"><div className="v">{total}<small> 日</small></div><div className="t">合計記録</div></div>
+            <div className="tile"><div className="v">{avgStr}</div><div className="t">平均きぶん</div></div>
+          </div>
         </div>
-      </div>
 
-      <div className="sec">
-        <div className="lbl">Mood distribution</div>
-        <div style={{marginTop:14}}>
-          {[5,4,3,2,1].map(v=>{
-            const m=moodMeta(v); const pct=dist[v]/maxD*100;
-            return (
-              <div key={v} className="dist-row">
-                <span className="dist-face" style={{background:m.raw}}><MoodFace v={v} size={17}/></span>
-                <span className="dist-name">{m.l}</span>
-                <span className="bar-wrap"><span className="bar" style={{width:pct+'%',background:m.raw}}></span></span>
-                <span className="dist-n">{dist[v]}</span>
+        <div className="sec">
+          <div className="lbl">Last 14 days</div>
+          <div style={{display:'flex',gap:5,alignItems:'flex-end',height:46}}>
+            {trend.map((r,i)=>(
+              <div key={i} style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end',height:'100%'}}>
+                <div style={{height: r? `${20+(r.mood-1)/4*80}%`:'10%', borderRadius:6,
+                  background: r? moodMeta(r.mood).raw : 'var(--glass-2)', transition:'height .5s'}}></div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="sec">
-        <div className="lbl">Top moments</div>
-        <div style={{marginTop:14}}>
-          {top.length? top.map(([n,c])=>(
-            <div key={n} className="tag-row"><span className="nm"><TagIcon name={n}/>{n}</span><span className="ct">{c}日</span></div>
-          )) : <div className="empty-note">まだタグの記録がありません。</div>}
+        <div className="sec">
+          <div className="lbl">Mood distribution</div>
+          <div style={{marginTop:14}}>
+            {[5,4,3,2,1].map(v=>{
+              const m=moodMeta(v); const pct=dist[v]/maxD*100;
+              return (
+                <div key={v} className="dist-row">
+                  <span className="dist-face" style={{background:m.raw}}><MoodFace v={v} size={17}/></span>
+                  <span className="dist-name">{m.l}</span>
+                  <span className="bar-wrap"><span className="bar" style={{width:pct+'%',background:m.raw}}></span></span>
+                  <span className="dist-n">{dist[v]}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+
+        <div className="sec">
+          <div className="lbl">Top moments</div>
+          <div style={{marginTop:14}}>
+            {top.length? top.map(([n,c])=>(
+              <div key={n} className="tag-row"><span className="nm"><TagIcon name={n}/>{n}</span><span className="ct">{c}日</span></div>
+            )) : <div className="empty-note">まだタグの記録がありません。</div>}
+          </div>
+        </div>
+      </>}
+
+      {tab==='corr' && <>
+        <div className="sec">
+          <div className="lbl">出来事 × 気分の相関</div>
+          <div className="corr-hint">選んだタグが気分にどう影響しているか。右が良い傾向、左がしんどい傾向。</div>
+          {correlations.length>0 ? (
+            <div className="corr-list">
+              {correlations.map(c=>{
+                const pct = (c.delta / maxDelta) * 50;
+                const isPos = c.delta >= 0;
+                const barColor = isPos ? 'var(--ac)' : 'var(--m2)';
+                return (
+                  <div key={c.tag} className="corr-row">
+                    <span className="corr-tag"><TagIcon name={c.tag}/>{c.tag}</span>
+                    <span className="corr-n">{c.count}日</span>
+                    <span className="corr-bar-wrap">
+                      <span className="corr-center"></span>
+                      {isPos ?
+                        <span className="corr-bar pos" style={{width:Math.abs(pct)+'%',background:barColor}}></span> :
+                        <span className="corr-bar neg" style={{width:Math.abs(pct)+'%',background:barColor}}></span>
+                      }
+                    </span>
+                    <span className={'corr-delta'+(isPos?' pos':' neg')}>
+                      {isPos?'+':''}{c.delta.toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <div className="empty-note">まだデータが足りません。記録を続けると相関が見えてきます。</div>}
+        </div>
+
+        {correlations.length>0 && total>=7 && (
+          <div className="sec">
+            <div className="lbl">気づき</div>
+            <div className="corr-insights">
+              {correlations.filter(c=>c.delta>0.2&&c.count>=3).slice(0,3).map(c=>(
+                <div key={c.tag} className="corr-insight pos">
+                  <span className="ci-tag">{c.tag}</span>をした日は気分が良い傾向
+                  <span className="ci-val">（平均 {c.avg.toFixed(1)}）</span>
+                </div>
+              ))}
+              {correlations.filter(c=>c.delta<-0.2&&c.count>=3).slice(-3).reverse().map(c=>(
+                <div key={c.tag} className="corr-insight neg">
+                  <span className="ci-tag">{c.tag}</span>がある日は気分が下がりやすい
+                  <span className="ci-val">（平均 {c.avg.toFixed(1)}）</span>
+                </div>
+              ))}
+              {correlations.every(c=>Math.abs(c.delta)<=0.2||c.count<3) &&
+                <div className="empty-note">まだはっきりした傾向は見えていません。記録が増えると見えてきます。</div>
+              }
+            </div>
+          </div>
+        )}
+      </>}
     </div>
   );
 }
@@ -394,24 +580,30 @@ function ExportScreen({ records, onImport }){
       if(f.name.endsWith('.json')){
         data=JSON.parse(text);
       } else if(f.name.endsWith('.csv')){
-        const lines=text.trim().split('\n');
-        data={};
-        for(let i=1;i<lines.length;i++){
-          const cols=lines[i].match(/(?:^|,)("(?:[^"]|"")*"|[^,]*)/g);
-          if(!cols||cols.length<3) continue;
-          const clean=cols.map(c=>c.replace(/^,/,'').replace(/^"|"$/g,'').replace(/""/g,'"'));
-          const [date,mood,,tags,good,why]=clean;
-          if(!date.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
-          data[date]={
-            mood:parseInt(mood)||3,
-            tags: tags? tags.split('|').filter(Boolean) : [],
-            goodThings:good||'', why:why||'', photo:'',
-            updatedAt:new Date().toISOString(),
-          };
+        data = parseDaylioCSV(text);
+        if(!data){
+          const lines=text.trim().split('\n');
+          data={};
+          for(let i=1;i<lines.length;i++){
+            const cols=parseCSVRow(lines[i]);
+            if(!cols||cols.length<3) continue;
+            const [date,mood,,tags,good,why]=cols;
+            const cleanDate = (date||'').replace(/^"|"$/g,'').trim();
+            if(!cleanDate.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+            data[cleanDate]={
+              mood:parseInt((mood||'').replace(/"/g,''))||3,
+              tags: tags? tags.replace(/^"|"$/g,'').split('|').filter(Boolean) : [],
+              goodThings:(good||'').replace(/^"|"$/g,'').replace(/""/g,'"')||'',
+              why:(why||'').replace(/^"|"$/g,'').replace(/""/g,'"')||'',
+              photo:'',
+              updatedAt:new Date().toISOString(),
+            };
+          }
         }
       } else { alert('JSON または CSV ファイルを選んでください'); return; }
       if(data && typeof data==='object'){
         const count=Object.keys(data).length;
+        if(count===0){ alert('インポートできるデータが見つかりませんでした。'); return; }
         if(confirm(`${count}件の記録をインポートしますか？\n（同じ日付のデータは上書きされます）`)){
           onImport(data);
         }
@@ -443,7 +635,7 @@ function ExportScreen({ records, onImport }){
           <span className="exp-ic" style={{background:'color-mix(in srgb,var(--m3) 16%,transparent)',color:'var(--m3)'}}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15v3.5a2 2 0 002 2h12a2 2 0 002-2V15M16.5 8.5L12 4 7.5 8.5M12 4v11"/></svg>
           </span>
-          <span><div className="nm">JSON / CSV をインポート</div><div className="ds">他のアプリや過去のデータを取り込む</div></span>
+          <span><div className="nm">JSON / CSV / Daylio をインポート</div><div className="ds">emlog形式・Daylio CSV どちらも対応</div></span>
         </button>
         <input ref={fileRef} type="file" accept=".json,.csv" style={{display:'none'}} onChange={handleImport}/>
       </div>
@@ -505,20 +697,20 @@ function TagManagerSheet({ tags, onChange, onClose }){
   const [list,setList]=useState(tags.map(t=>({...t})));
   const [nn,setNn]=useState('');
   const [nneg,setNneg]=useState(false);
-  const [ntime,setNtime]=useState('day');
+  const [ngroup,setNgroup]=useState('hobby');
   const upd=(i,f,v)=>{ setList(list.map((t,j)=>j===i?{...t,[f]:v}:t)); };
   const del=(i)=>setList(list.filter((_,j)=>j!==i));
   const add=()=>{
     const v=nn.trim(); if(!v||list.some(t=>t.name===v))return;
-    setList([...list,{name:v,neg:nneg,time:ntime}]); setNn(''); setNneg(false);
+    setList([...list,{name:v,neg:nneg,group:ngroup}]); setNn(''); setNneg(false);
   };
-  const commit=()=>{ onChange(list.filter(t=>t.name.trim()).map(t=>({name:t.name.trim(),neg:!!t.neg,time:t.time||'day'}))); onClose(); };
+  const commit=()=>{ onChange(list.filter(t=>t.name.trim()).map(t=>({name:t.name.trim(),neg:!!t.neg,group:t.group||'hobby'}))); onClose(); };
 
-  const renderGroup=(time,label)=>{
-    const items=list.map((t,i)=>({...t,i})).filter(t=>t.time===time);
+  const renderGroup=(group,label)=>{
+    const items=list.map((t,i)=>({...t,i})).filter(t=>t.group===group);
     if(!items.length) return null;
     return (
-      <div key={time} style={{marginBottom:16}}>
+      <div key={group} style={{marginBottom:16}}>
         <div className="grp-lbl" style={{color:'var(--dim)'}}>{label}</div>
         {items.map(t=>(
           <div key={t.i} className="tm-row">
@@ -536,13 +728,13 @@ function TagManagerSheet({ tags, onChange, onClose }){
     <>
       <div className="grab"></div>
       <div className="sheet-date">やったこと・できごとを編集</div>
-      {renderGroup('am','Morning')}
-      {renderGroup('day','Daytime')}
-      {renderGroup('eve','Evening')}
+      {renderGroup('work','仕事')}
+      {renderGroup('health','健康')}
+      {renderGroup('hobby','趣味')}
       <div className="tm-add">
         <input className="tm-nm" value={nn} placeholder="新しい項目" onChange={e=>setNn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()}/>
-        <select className="tm-time" value={ntime} onChange={e=>setNtime(e.target.value)}>
-          <option value="am">朝</option><option value="day">昼</option><option value="eve">夜</option>
+        <select className="tm-grp" value={ngroup} onChange={e=>setNgroup(e.target.value)}>
+          <option value="work">仕事</option><option value="health">健康</option><option value="hobby">趣味</option>
         </select>
         <button className="primary" onClick={add}>追加</button>
       </div>
@@ -733,9 +925,9 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
   addMem(yAgo(1),'1Y ago'); addMem(mAgo(1),'1M ago'); addMem(mAgo(3),'3M ago');
   const memList=mems.slice(0,2);
 
-  // group tags by time
-  const renderTimeGroup = (time, label) => {
-    const items = tags.filter(t=>t.time===time);
+  // group tags by genre
+  const renderTagGroup = (group, label) => {
+    const items = tags.filter(t=>t.group===group);
     if(!items.length) return null;
     return (
       <>
@@ -770,9 +962,9 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
 
       <div className="sec">
         <div className="lbl">やったこと <span style={{color:'var(--dimmer)'}}>· 任意</span></div>
-        {renderTimeGroup('am','Morning')}
-        {renderTimeGroup('day','Daytime')}
-        {renderTimeGroup('eve','Evening')}
+        {renderTagGroup('work','仕事')}
+        {renderTagGroup('health','健康')}
+        {renderTagGroup('hobby','趣味')}
         <div className="chips" style={{marginTop:12}}>
           <button className="chip ghost" onClick={onManageTags}>＋ 編集</button>
         </div>
