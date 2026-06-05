@@ -132,6 +132,22 @@ function fileToThumb(file, maxPx=900, quality=0.72){
   });
 }
 
+// ---- Daylio → emlog tag mapping ----
+const DAYLIO_TAG_MAP = {
+  // 行動タグ → emlog タグ名にマッピング
+  '酒を飲む':'お酒', '朝運動':'朝活', '早くに帰宅':'早帰り',
+  '運動する':'運動', '風呂':'サウナ', 'ヘルシーなものを食べる':'健康食',
+  '趣味':'創作', '買い物':'買物',
+  // 同名 or 短縮（そのまま通る）
+  '早寝':'早寝', '読書':'読書', '勉強':'勉強', 'ゲーム':'ゲーム', '掃除':'掃除', '仮眠':'仮眠',
+  // ネガ行動タグ
+  '疲れた':'疲れ', 'ストレスがある':'ストレス', '眠い':'寝不足', '体調不良':'体調',
+  // 純粋な感情タグ → null（moodの5段階で表現するので除外）
+  '不安':null, '必死':null, 'わからない':null, '心配':null,
+  '満足':null, 'リラックス':null, '嬉しい':null, '悲しい':null,
+  'ワクワク':null, '感謝':null, '怒り':null,
+};
+
 // ---- Daylio CSV parser ----
 function parseDaylioCSV(text){
   const lines = text.trim().split('\n');
@@ -154,7 +170,7 @@ function parseDaylioCSV(text){
     'good':4,'良い':4,'いい':4,
     'meh':3,'okay':3,'普通':3,'ふつう':3,
     'bad':2,'悪い':2,'いまいち':2,
-    'awful':1,'terrible':1,'すごく悪い':1,'しんどい':1,
+    'awful':1,'terrible':1,'すごく悪い':1,'しんどい':1,'最低':1,
   };
 
   const data = {};
@@ -181,12 +197,17 @@ function parseDaylioCSV(text){
     let mood = MOOD_MAP[moodRaw];
     if(!mood){ const n=parseInt(moodRaw); mood=(n>=1&&n<=5)?n:3; }
 
-    const acts = actCol!=null && row[actCol]
-      ? row[actCol].split(/[|,]/).map(s=>s.trim()).filter(Boolean) : [];
-    const note = noteCol!=null ? (row[noteCol]||'').trim() : '';
+    const rawActs = actCol!=null && row[actCol]
+      ? row[actCol].split(/[|]/).map(s=>s.trim()).filter(Boolean) : [];
+    const tags = rawActs
+      .map(a => DAYLIO_TAG_MAP.hasOwnProperty(a) ? DAYLIO_TAG_MAP[a] : a)
+      .filter(Boolean);
+    const uniqueTags = [...new Set(tags)];
+
+    const note = noteCol!=null ? (row[noteCol]||'').replace(/<br\s*\/?>/gi,'\n').trim() : '';
 
     data[dateStr] = {
-      mood, tags:acts, goodThings:note, why:'', photo:'',
+      mood, tags:uniqueTags, goodThings:note, why:'', photo:'',
       updatedAt: new Date(dateStr+'T00:00:00').toISOString(),
     };
   }
