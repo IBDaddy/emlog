@@ -3,6 +3,7 @@
   "short_name": "emlog",
   "description": "感情の流れを見える化する",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
@@ -10,12 +11,20 @@
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
