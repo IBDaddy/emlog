@@ -872,16 +872,10 @@ function App(){
     <div className="device">
       <div className="aura"></div><div className="aura b"></div>
       {toast && <div className="toast show">{toast}</div>}
-      <div className="status">
-        <span>9:41</span>
-        <span className="r"><span>emlog</span></span>
-        <span>100</span>
-      </div>
 
       <div className="screen enter" key={screen}>
         {screen==='log' && <LogScreen records={records} tags={tags} onSaveToday={saveDay}
-            onOpenDay={(k)=>setSheet({type:'day',dayKey:k})} onManageTags={()=>setSheet({type:'tags'})}
-            onSettings={()=>setSheet({type:'settings'})}/>}
+            onOpenDay={(k)=>setSheet({type:'day',dayKey:k})} onManageTags={()=>setSheet({type:'tags'})}/>}
         {screen==='calendar' && <CalendarScreen records={records} onOpenDay={(k)=>setSheet({type:'day',dayKey:k})}/>}
         {screen==='insights' && <InsightsScreen records={records}/>}
         {screen==='export' && <ExportScreen records={records} onImport={importRecords}/>}
@@ -894,6 +888,9 @@ function App(){
             <span className="tl">{t.label}</span>
           </button>
         ))}
+        <button className="tab tab-set" onClick={()=>{setSheet({type:'settings'}); buzz(14);}} title="設定">
+          <span className="ic"><GearIcon/></span>
+        </button>
       </nav>
 
       <div className={'overlay'+(sheet?' show':'')} onClick={(e)=>{ if(e.target.classList.contains('overlay')) setSheet(null); }}>
@@ -912,7 +909,7 @@ function App(){
 }
 
 // ============ LOG SCREEN ============
-function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSettings }){
+function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
   const tk = todayKey();
   const cur = records[tk] || null;
   const [mood,setMood] = useState(cur?cur.mood:null);
@@ -967,14 +964,8 @@ function LogScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, onSett
 
   return (
     <div className="scroll">
-      <div className="hero">
-        <div className="hero-top">
-          <div>
-            <div className="eyebrow">{['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()]} · {ENMON[now.getMonth()]} {now.getDate()}</div>
-            <div className="greet">{greeting()}</div>
-          </div>
-          <button className="icon-btn" onClick={onSettings} title="設定"><GearIcon/></button>
-        </div>
+      <div className="log-head">
+        <span className="log-date">{now.getMonth()+1}月{now.getDate()}日（{DOW[now.getDay()]}）</span>
       </div>
 
       <div className="sec">
