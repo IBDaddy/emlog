@@ -150,7 +150,8 @@ const DAYLIO_TAG_MAP = {
 
 // ---- Daylio CSV parser ----
 function parseDaylioCSV(text){
-  const lines = text.trim().split('\n');
+  const t = text.charCodeAt(0)===0xFEFF ? text.slice(1) : text;
+  const lines = t.trim().split('\n');
   if(lines.length<2) return null;
   const header = lines[0].toLowerCase();
   if(!header.includes('full_date') && !header.includes('activities')) return null;
