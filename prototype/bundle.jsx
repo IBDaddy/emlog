@@ -331,7 +331,156 @@ function MoodChart({ records, tags }){
   );
 }
 
-// ============ ANALYSIS SCREEN (Phase 2) ============
+// ============ MOOD DISTRIBUTION ============
+function MoodDistribution({ records }){
+  const counts = [0,0,0,0,0];
+  const keys = Object.keys(records);
+  keys.forEach(k=>{ const m=records[k].mood; if(m>=1&&m<=5) counts[m-1]++; });
+  const max = Math.max(1,...counts);
+  return (
+    <div>
+      {MOODS.map((m,i)=>(
+        <div key={m.v} className="dist-row">
+          <div className="dist-face" style={{background:m.raw}}><MoodFace v={m.v} size={16}/></div>
+          <span className="dist-name">{m.l}</span>
+          <div className="bar-wrap"><div className="bar" style={{width:(counts[i]/max*100)+'%',background:m.raw}}/></div>
+          <span className="dist-n">{counts[i]}</span>
+        </div>
+      )).reverse()}
+    </div>
+  );
+}
+
+// ============ WEEKDAY BARS ============
+function WeekdayBars({ records }){
+  const sums = [0,0,0,0,0,0,0];
+  const cnts = [0,0,0,0,0,0,0];
+  Object.keys(records).forEach(k=>{
+    const d = new Date(k+'T00:00:00');
+    const dow = d.getDay();
+    sums[dow] += records[k].mood;
+    cnts[dow]++;
+  });
+  const avgs = sums.map((s,i)=>cnts[i]?s/cnts[i]:0);
+  const max = Math.max(5,...avgs);
+  const W=334, H=120, barW=30, gap=(W-barW*7)/8;
+  return (
+    <div className="chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg">
+        {DOW.map((_,i)=>{
+          const x = gap + i*(barW+gap);
+          const h = avgs[i]/max*(H-30);
+          const y = H-20-h;
+          const m = avgs[i]>0 ? moodMeta(Math.round(avgs[i])) : null;
+          const color = m ? m.raw : 'var(--glass-2)';
+          return <g key={i}>
+            <rect x={x} y={y} width={barW} height={h} rx={6} fill={color} opacity={avgs[i]?0.85:0.2}/>
+            <text x={x+barW/2} y={H-4} textAnchor="middle" className="chart-ylabel">{DOW[i]}</text>
+            {avgs[i]>0 && <text x={x+barW/2} y={y-5} textAnchor="middle" className="chart-ylabel" style={{fill:'var(--dim)'}}>{avgs[i].toFixed(1)}</text>}
+          </g>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============ STABILITY (monthly avg + variance) ============
+function StabilityView({ records }){
+  const months = {};
+  Object.keys(records).sort().forEach(k=>{
+    const mk = k.slice(0,7);
+    if(!months[mk]) months[mk]=[];
+    months[mk].push(records[k].mood);
+  });
+  const mks = Object.keys(months).sort().slice(-6);
+  if(mks.length<1) return <div className="empty-note">まだデータがありません。</div>;
+
+  const stats = mks.map(mk=>{
+    const m=months[mk];
+    const avg=m.reduce((a,b)=>a+b,0)/m.length;
+    const variance=m.reduce((a,b)=>a+(b-avg)**2,0)/m.length;
+    const sd=Math.sqrt(variance);
+    return { month:mk, avg, sd, count:m.length };
+  });
+
+  const W=334, H=110, PX=6, PY=18, PB=24;
+  const chartW=W-PX*2, chartH=H-PY-PB;
+  const step = stats.length>1 ? chartW/(stats.length-1) : chartW/2;
+
+  return (
+    <div className="chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg">
+        {[1,3,5].map(v=>{
+          const y = PY + chartH - ((v-1)/4)*chartH;
+          return <line key={v} x1={PX} x2={W-PX} y1={y} y2={y} stroke="var(--glass-line)" strokeWidth="0.5"/>;
+        })}
+        {stats.map((s,i)=>{
+          const x = PX + (stats.length>1 ? i*step : step);
+          const yAvg = PY + chartH - ((s.avg-1)/4)*chartH;
+          const sdPx = (s.sd/4)*chartH;
+          const label = s.month.slice(5)+'月';
+          return <g key={s.month}>
+            <line x1={x} x2={x} y1={yAvg-sdPx} y2={yAvg+sdPx} stroke="var(--ac)" strokeWidth="3" opacity="0.25" strokeLinecap="round"/>
+            <circle cx={x} cy={yAvg} r={4} fill="var(--ac)" stroke="var(--bg)" strokeWidth="1.5"/>
+            <text x={x} y={H-4} textAnchor="middle" className="chart-ylabel">{label}</text>
+          </g>;
+        })}
+      </svg>
+      <div className="stab-legend">
+        <span className="stab-dot"/>平均値
+        <span className="stab-bar"/>ばらつき（±SD）
+      </div>
+    </div>
+  );
+}
+
+// ============ CALENDAR HEATMAP ============
+function CalendarHeatmap({ records }){
+  const [offset,setOffset] = useState(0);
+  const now = new Date();
+  const viewDate = new Date(now.getFullYear(), now.getMonth()-offset, 1);
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay();
+  const todayK = todayKey();
+
+  const cells = [];
+  for(let i=0;i<firstDow;i++) cells.push({empty:true});
+  for(let d=1;d<=daysInMonth;d++){
+    const k = `${year}-${pad(month+1)}-${pad(d)}`;
+    const r = records[k];
+    const future = k > todayK;
+    cells.push({ day:d, key:k, mood:r?r.mood:0, future, today:k===todayK });
+  }
+
+  return (
+    <div>
+      <div className="cal-nav">
+        <button onClick={()=>setOffset(o=>o+1)}>‹</button>
+        <span className="cal-label">{month+1}月<span className="yr">{year}</span></span>
+        <button onClick={()=>setOffset(o=>Math.max(0,o-1))} disabled={offset===0}>›</button>
+      </div>
+      <div className="hm-grid">
+        {DOW.map(d=><div key={d} className="hm-dow">{d}</div>)}
+        {cells.map((c,i)=>{
+          if(c.empty) return <div key={'e'+i} className="hm-cell empty"/>;
+          if(c.future) return <div key={c.key} className="hm-cell future"><span className="hm-d">{c.day}</span></div>;
+          const m = c.mood ? moodMeta(c.mood) : null;
+          const bg = m ? m.raw : 'var(--glass-2)';
+          const textColor = m ? (c.mood>=3?'rgba(26,18,8,.8)':'rgba(255,255,255,.8)') : 'var(--dimmer)';
+          return (
+            <div key={c.key} className={'hm-cell'+(c.today?' today':'')} style={{background:bg}}>
+              <span className="hm-d" style={{color:textColor}}>{c.day}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============ ANALYSIS SCREEN (Phase 2+3) ============
 function AnalysisScreen({ records }){
   const [period,setPeriod] = useState('1m');
   const filtered = filterByPeriod(records, period);
@@ -393,6 +542,27 @@ function AnalysisScreen({ records }){
             })}
           </div>
         ) : <div className="empty-note">まだデータが足りません（2日以上必要）</div>}
+      </div>
+
+      <div className="sec">
+        <div className="lbl">気分の分布</div>
+        <MoodDistribution records={filtered}/>
+      </div>
+
+      <div className="sec">
+        <div className="lbl">曜日べつ平均</div>
+        <WeekdayBars records={filtered}/>
+      </div>
+
+      <div className="sec">
+        <div className="lbl">安定度</div>
+        <div className="corr-hint">月ごとの平均と気分のばらつき</div>
+        <StabilityView records={records}/>
+      </div>
+
+      <div className="sec">
+        <div className="lbl">カレンダー</div>
+        <CalendarHeatmap records={records}/>
       </div>
 
       <div className="sec">

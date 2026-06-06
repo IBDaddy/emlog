@@ -349,6 +349,22 @@ textarea.ta::placeholder{color:var(--dimmer);}
 .chart-ylabel{font-family:var(--mono);font-size:8px;fill:var(--dimmer);letter-spacing:.5px;}
 .chart-tag-label{font-family:var(--mono);font-size:8px;fill:var(--dim);letter-spacing:.5px;}
 
+/* ---------- stability legend ---------- */
+.stab-legend{display:flex;align-items:center;gap:12px;justify-content:center;margin-top:8px;
+  font-family:var(--mono);font-size:9px;color:var(--dimmer);letter-spacing:.5px;}
+.stab-dot{width:8px;height:8px;border-radius:50%;background:var(--ac);margin-right:3px;display:inline-block;}
+.stab-bar{width:3px;height:14px;border-radius:2px;background:var(--ac);opacity:.3;margin-right:3px;display:inline-block;}
+
+/* ---------- calendar heatmap ---------- */
+.hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.hm-dow{font-family:var(--mono);font-size:9px;color:var(--dimmer);text-align:center;padding:0 0 4px;letter-spacing:1px;}
+.hm-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:var(--glass-2);transition:.18s;}
+.hm-cell.empty{background:none;}
+.hm-cell.future{opacity:.2;}
+.hm-cell.today{box-shadow:inset 0 0 0 1.5px var(--ac);}
+.hm-d{font-family:var(--mono);font-size:11px;font-weight:600;}
+
 /* ---------- accordion ---------- */
 .acc{max-height:0;overflow:hidden;opacity:0;
   transition:max-height .5s cubic-bezier(.22,.9,.3,1),opacity .35s;}
