@@ -262,24 +262,47 @@ function filterByPeriod(records, periodId){
 }
 
 // ============ MOOD LINE CHART (SVG) ============
-function MoodChart({ records, tags }){
-  const keys = Object.keys(records).sort();
-  if(keys.length<2) return <div className="empty-note">チャートには2日分以上のデータが必要です。</div>;
+function downsampleWeekly(records, keys){
+  const buckets = {};
+  keys.forEach(k=>{
+    const d = new Date(k+'T00:00:00');
+    const mon = new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+    const wk = keyOf(mon);
+    if(!buckets[wk]) buckets[wk]={moods:[],tags:new Set()};
+    buckets[wk].moods.push(records[k].mood);
+    (records[k].tags||[]).forEach(t=>buckets[wk].tags.add(t));
+  });
+  return Object.keys(buckets).sort().map(wk=>{
+    const b=buckets[wk];
+    const avg=b.moods.reduce((a,c)=>a+c,0)/b.moods.length;
+    return { key:wk, mood:Math.round(avg), moodRaw:avg, tags:[...b.tags] };
+  });
+}
+
+function MoodChart({ records }){
+  const allKeys = Object.keys(records).sort();
+  if(allKeys.length<2) return <div className="empty-note">チャートには2日分以上のデータが必要です。</div>;
+
+  const useWeekly = allKeys.length > 60;
+  const label = useWeekly ? '週平均で表示' : null;
+
+  const dataPoints = useWeekly
+    ? downsampleWeekly(records, allKeys)
+    : allKeys.map(k=>({ key:k, mood:records[k].mood, moodRaw:records[k].mood, tags:records[k].tags||[] }));
 
   const W=334, H=140, PX=0, PY=18, PB=30;
   const chartW=W-PX*2, chartH=H-PY-PB;
-  const step = keys.length>1 ? chartW/(keys.length-1) : 0;
+  const step = dataPoints.length>1 ? chartW/(dataPoints.length-1) : 0;
 
-  const pts = keys.map((k,i)=>{
-    const r=records[k];
+  const pts = dataPoints.map((d,i)=>{
     const x = PX + i*step;
-    const y = PY + chartH - ((r.mood-1)/4)*chartH;
-    return { x, y, mood:r.mood, key:k, tags:r.tags||[] };
+    const y = PY + chartH - ((d.moodRaw-1)/4)*chartH;
+    return { x, y, mood:d.mood, key:d.key, tags:d.tags };
   });
 
   const allTags = new Set();
-  keys.forEach(k=>(records[k].tags||[]).forEach(t=>allTags.add(t)));
-  const topTags = [...allTags].slice(0,6);
+  dataPoints.forEach(d=>d.tags.forEach(t=>allTags.add(t)));
+  const topTags = [...allTags].slice(0, useWeekly?4:6);
 
   const pathD = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
 
@@ -290,8 +313,11 @@ function MoodChart({ records, tags }){
     { v:1, label:'しんどい' },
   ];
 
+  const dotR = useWeekly ? 2.5 : 3;
+
   return (
     <div className="chart-wrap">
+      {label && <div className="chart-mode">{label}</div>}
       <svg viewBox={`0 0 ${W} ${H + topTags.length*14}`} className="chart-svg">
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -313,7 +339,7 @@ function MoodChart({ records, tags }){
 
         {pts.map((p,i)=>{
           const m=moodMeta(p.mood);
-          return <circle key={i} cx={p.x} cy={p.y} r={3} fill={m.raw} stroke="var(--bg)" strokeWidth="1.5"/>;
+          return <circle key={i} cx={p.x} cy={p.y} r={dotR} fill={m.raw} stroke="var(--bg)" strokeWidth="1.5"/>;
         })}
 
         {topTags.map((tag,ti)=>{
@@ -322,7 +348,7 @@ function MoodChart({ records, tags }){
             <text x={PX} y={rowY+9} className="chart-tag-label">{tag}</text>
             {pts.map((p,pi)=>{
               if(!p.tags.includes(tag)) return null;
-              return <circle key={pi} cx={p.x} cy={rowY+5} r={2.5} fill="var(--ac)" opacity="0.6"/>;
+              return <circle key={pi} cx={p.x} cy={rowY+5} r={2} fill="var(--ac)" opacity="0.6"/>;
             })}
           </g>;
         })}
@@ -822,11 +848,7 @@ function App(){
     setSheet(null);
   },[]);
   const importRecords = useCallback((data)=>{
-    setRecords(prev=>{
-      const merged={...prev};
-      Object.entries(data).forEach(([k,v])=>{ merged[k]={...v,updatedAt:v.updatedAt||new Date().toISOString()}; });
-      return merged;
-    });
+    setRecords(data);
     flash(`${Object.keys(data).length}件をインポートしました`);
   },[flash]);
 
