@@ -231,22 +231,125 @@ const GearIcon = () => (
   </svg>
 );
 
-// ============ ANALYSIS (placeholder — Phase 2 will rebuild) ============
+// ============ PERIOD FILTER ============
+const PERIODS = [
+  { id:'1w', label:'1W', days:7 },
+  { id:'1m', label:'1M', days:30 },
+  { id:'3m', label:'3M', days:90 },
+  { id:'6m', label:'6M', days:180 },
+  { id:'all', label:'ALL', days:0 },
+];
+
+function PeriodFilter({ value, onChange }){
+  return (
+    <div className="pf">
+      {PERIODS.map(p=>(
+        <button key={p.id} className={'pf-btn'+(value===p.id?' on':'')} onClick={()=>onChange(p.id)}>{p.label}</button>
+      ))}
+    </div>
+  );
+}
+
+function filterByPeriod(records, periodId){
+  const p = PERIODS.find(x=>x.id===periodId);
+  if(!p || p.days===0) return records;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate()-p.days);
+  const cutKey = keyOf(cutoff);
+  const out = {};
+  Object.keys(records).forEach(k=>{ if(k>=cutKey) out[k]=records[k]; });
+  return out;
+}
+
+// ============ MOOD LINE CHART (SVG) ============
+function MoodChart({ records, tags }){
+  const keys = Object.keys(records).sort();
+  if(keys.length<2) return <div className="empty-note">チャートには2日分以上のデータが必要です。</div>;
+
+  const W=334, H=140, PX=0, PY=18, PB=30;
+  const chartW=W-PX*2, chartH=H-PY-PB;
+  const step = keys.length>1 ? chartW/(keys.length-1) : 0;
+
+  const pts = keys.map((k,i)=>{
+    const r=records[k];
+    const x = PX + i*step;
+    const y = PY + chartH - ((r.mood-1)/4)*chartH;
+    return { x, y, mood:r.mood, key:k, tags:r.tags||[] };
+  });
+
+  const allTags = new Set();
+  keys.forEach(k=>(records[k].tags||[]).forEach(t=>allTags.add(t)));
+  const topTags = [...allTags].slice(0,6);
+
+  const pathD = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+
+  const gradId = 'mcg';
+  const yLabels = [
+    { v:5, label:'最高' },
+    { v:3, label:'ふつう' },
+    { v:1, label:'しんどい' },
+  ];
+
+  return (
+    <div className="chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H + topTags.length*14}`} className="chart-svg">
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--ac)" stopOpacity="0.25"/>
+            <stop offset="100%" stopColor="var(--ac)" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+
+        {yLabels.map(yl=>{
+          const y = PY + chartH - ((yl.v-1)/4)*chartH;
+          return <g key={yl.v}>
+            <line x1={PX} x2={W} y1={y} y2={y} stroke="var(--glass-line)" strokeWidth="0.8"/>
+            <text x={W-2} y={y-4} textAnchor="end" className="chart-ylabel">{yl.label}</text>
+          </g>;
+        })}
+
+        <path d={pathD + `L${pts[pts.length-1].x},${PY+chartH}L${pts[0].x},${PY+chartH}Z`} fill={`url(#${gradId})`}/>
+        <path d={pathD} fill="none" stroke="var(--ac)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+
+        {pts.map((p,i)=>{
+          const m=moodMeta(p.mood);
+          return <circle key={i} cx={p.x} cy={p.y} r={3} fill={m.raw} stroke="var(--bg)" strokeWidth="1.5"/>;
+        })}
+
+        {topTags.map((tag,ti)=>{
+          const rowY = H + ti*14;
+          return <g key={tag}>
+            <text x={PX} y={rowY+9} className="chart-tag-label">{tag}</text>
+            {pts.map((p,pi)=>{
+              if(!p.tags.includes(tag)) return null;
+              return <circle key={pi} cx={p.x} cy={rowY+5} r={2.5} fill="var(--ac)" opacity="0.6"/>;
+            })}
+          </g>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============ ANALYSIS SCREEN (Phase 2) ============
 function AnalysisScreen({ records }){
-  const keys=Object.keys(records); const total=keys.length;
-  let sum=0; keys.forEach(k=>sum+=records[k].mood);
-  const avg = total? (sum/total).toFixed(1):'—';
+  const [period,setPeriod] = useState('1m');
+  const filtered = filterByPeriod(records, period);
+  const keys = Object.keys(filtered).sort();
+  const total = keys.length;
+  let sum=0; keys.forEach(k=>sum+=filtered[k].mood);
+  const avg = total ? (sum/total).toFixed(1) : '—';
 
   const tagMoods = {};
-  keys.forEach(k=>{ const r=records[k]; (r.tags||[]).forEach(t=>{ if(!tagMoods[t]) tagMoods[t]=[]; tagMoods[t].push(r.mood); }); });
-  const withoutTag = (tag) => { const moods=[]; keys.forEach(k=>{ const r=records[k]; if(!(r.tags||[]).includes(tag)) moods.push(r.mood); }); return moods; };
+  keys.forEach(k=>{ const r=filtered[k]; (r.tags||[]).forEach(t=>{ if(!tagMoods[t]) tagMoods[t]=[]; tagMoods[t].push(r.mood); }); });
+  const withoutTag = (tag) => { const moods=[]; keys.forEach(k=>{ const r=filtered[k]; if(!(r.tags||[]).includes(tag)) moods.push(r.mood); }); return moods; };
 
   const rankings = Object.entries(tagMoods)
     .filter(([_,m])=>m.length>=2)
     .map(([tag,m])=>{
       const yesAvg = m.reduce((a,b)=>a+b,0)/m.length;
       const noMoods = withoutTag(tag);
-      const noAvg = noMoods.length? noMoods.reduce((a,b)=>a+b,0)/noMoods.length : 0;
+      const noAvg = noMoods.length ? noMoods.reduce((a,b)=>a+b,0)/noMoods.length : 0;
       const delta = yesAvg - noAvg;
       return { tag, count:m.length, yesAvg, noAvg, delta };
     })
@@ -256,8 +359,15 @@ function AnalysisScreen({ records }){
     <div className="scroll">
       <div className="log-head"><span className="log-date">分析</span></div>
 
+      <PeriodFilter value={period} onChange={setPeriod}/>
+
       <div className="sec">
-        <div className="lbl">行動 × 気分ランキング</div>
+        <div className="lbl">気分の波</div>
+        <MoodChart records={filtered}/>
+      </div>
+
+      <div className="sec">
+        <div className="lbl">行動 × 気分</div>
         <div className="corr-hint">やった日 vs やってない日の平均気分の差</div>
         {rankings.length>0 ? (
           <div className="corr-list">
@@ -282,7 +392,7 @@ function AnalysisScreen({ records }){
               );
             })}
           </div>
-        ) : <div className="empty-note">まだデータが足りません。</div>}
+        ) : <div className="empty-note">まだデータが足りません（2日以上必要）</div>}
       </div>
 
       <div className="sec">

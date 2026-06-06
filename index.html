@@ -334,6 +334,21 @@ textarea.ta::placeholder{color:var(--dimmer);}
   padding:9px 12px;font-size:15px;font-family:var(--mono);outline:none;color-scheme:dark;}
 .time-input:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 50%,transparent);}
 
+/* ---------- period filter ---------- */
+.pf{display:flex;gap:4px;margin:0 0 20px;background:var(--glass);border-radius:14px;padding:3px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+.pf-btn{flex:1;border:none;background:none;color:var(--dim);font-family:var(--mono);font-size:12px;
+  font-weight:600;letter-spacing:1px;padding:8px 0;border-radius:11px;cursor:pointer;transition:.2s;}
+.pf-btn.on{background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac);}
+
+/* ---------- mood chart ---------- */
+.chart-wrap{background:var(--glass);border-radius:22px;padding:16px 12px 10px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  box-shadow:inset 0 1px 0 var(--glass-line);overflow:hidden;}
+.chart-svg{width:100%;display:block;}
+.chart-ylabel{font-family:var(--mono);font-size:8px;fill:var(--dimmer);letter-spacing:.5px;}
+.chart-tag-label{font-family:var(--mono);font-size:8px;fill:var(--dim);letter-spacing:.5px;}
+
 /* ---------- accordion ---------- */
 .acc{max-height:0;overflow:hidden;opacity:0;
   transition:max-height .5s cubic-bezier(.22,.9,.3,1),opacity .35s;}
