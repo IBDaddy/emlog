@@ -101,7 +101,7 @@ const loadTags = () => {
   }catch(e){ return DEFAULT_TAGS.map(x=>({...x})); }
 };
 const saveTagsLS = (t) => localStorage.setItem(TKEY, JSON.stringify(t));
-const DEFAULT_SETTINGS = { reminderOn:false, reminderTime:'21:00' };
+const DEFAULT_SETTINGS = { reminderOn:false, reminderTime:'21:00', theme:'dark' };
 const loadSettings = () => { try{return {...DEFAULT_SETTINGS,...(JSON.parse(localStorage.getItem(SKEY)||'{}'))}}catch(e){return {...DEFAULT_SETTINGS}} };
 const saveSettingsLS = (s) => localStorage.setItem(SKEY, JSON.stringify(s));
 
@@ -746,6 +746,15 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
         </div>}
       {permNote && <div className="empty-note" style={{color:'var(--danger)'}}>{permNote}</div>}
 
+      <div className="set-row">
+        <div><div className="st">テーマ</div>
+          <div className="sd">{s.theme==='dark'?'ダークモード':'やさしい色合い'}</div></div>
+        <div className="theme-toggle">
+          <button className={'theme-opt'+(s.theme==='dark'?' on':'')} onClick={()=>setS({...s,theme:'dark'})}>Dark</button>
+          <button className={'theme-opt'+(s.theme==='light'?' on':'')} onClick={()=>setS({...s,theme:'light'})}>Light</button>
+        </div>
+      </div>
+
       <div className="set-divider"></div>
       <div className="set-row" style={{borderBottom:'none'}}>
         <div><div className="st">データ</div></div>
@@ -823,8 +832,15 @@ function App(){
 
   const go = (id)=>{ if(id!==screen){ setScreen(id); buzz(14);} };
 
+  useEffect(()=>{
+    const theme = settings.theme||'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.content = theme==='light'?'#faf6f0':'#000000';
+  },[settings.theme]);
+
   return (
-    <div className="device">
+    <div className="device" data-theme={settings.theme||'dark'}>
       <div className="aura"></div><div className="aura b"></div>
       {toast && <div className="toast show">{toast}</div>}
 

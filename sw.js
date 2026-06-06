@@ -1,5 +1,5 @@
 // emlog Service Worker — offline cache (cache-first for app shell)
-const CACHE = 'emlog-v5';
+const CACHE = 'emlog-v6';
 const ASSETS = [
   './',
   './index.html',
