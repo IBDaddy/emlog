@@ -334,6 +334,40 @@ textarea.ta::placeholder{color:var(--dimmer);}
   padding:9px 12px;font-size:15px;font-family:var(--mono);outline:none;color-scheme:dark;}
 .time-input:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 50%,transparent);}
 
+/* ---------- accordion ---------- */
+.acc{max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .5s cubic-bezier(.22,.9,.3,1),opacity .35s;}
+.acc.open{max-height:2000px;opacity:1;}
+
+/* ---------- recent record cards ---------- */
+.rec-list{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.rec-card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:20px;padding:14px 16px;cursor:pointer;transition:.18s;
+  box-shadow:inset 0 1px 0 var(--glass-line);}
+.rec-card:active{transform:scale(.98);}
+.rec-head{display:flex;align-items:center;justify-content:space-between;}
+.rec-date{font-size:13px;color:var(--dim);font-weight:500;letter-spacing:.3px;}
+.rec-mood{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rec-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.rec-tag{font-size:11px;padding:3px 8px;border-radius:8px;color:var(--dim);
+  background:var(--glass-2);white-space:nowrap;}
+.rec-tag.neg{color:var(--m2);}
+.rec-tag.more{color:var(--dimmer);}
+.rec-note{font-size:12.5px;color:var(--dimmer);margin-top:7px;line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ---------- settings extras ---------- */
+.set-divider{height:1px;background:var(--hair);margin:20px 0 8px;}
+.set-btn{flex:1;background:var(--glass);border:none;border-radius:14px;padding:12px 14px;
+  color:var(--text);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:.18s;
+  box-shadow:inset 0 1px 0 var(--glass-line);}
+.set-btn:active{transform:scale(.97);}
+.set-btn.full{width:100%;text-align:center;}
+
+/* ---------- dim (low-count items) ---------- */
+.dim{opacity:.45;}
+
 /* ---------- explicit save button ---------- */
 .save-btn{position:sticky;bottom:8px;z-index:10;display:block;width:calc(100% - 12px);margin:18px auto 6px;
   background:var(--ac);color:#1a1208;border:none;border-radius:20px;padding:15px 24px;
