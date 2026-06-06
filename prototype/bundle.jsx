@@ -592,6 +592,14 @@ function HomeScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
   const [dirty,setDirty] = useState(false);
   const now = new Date();
 
+  useEffect(()=>{
+    const r=records[tk]||null;
+    setMood(r?r.mood:null);
+    setSel(new Set(r?r.tags:[]));
+    setGood(r?r.goodThings||'':'');
+    setDirty(false);
+  },[records[tk]?.updatedAt]);
+
   const toggle=(name)=>{ const n=new Set(sel); n.has(name)?n.delete(name):n.add(name); setSel(n); setDirty(true); };
   const pickMood=(v)=>{ setMood(v); buzz(); setDirty(true); };
   const save=()=>{
