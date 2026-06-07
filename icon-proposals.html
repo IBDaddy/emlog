@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>emlog icon proposals</title>
+<style>
+body{background:#111;color:#eee;font-family:system-ui;display:flex;flex-wrap:wrap;gap:32px;padding:40px;justify-content:center;}
+.card{text-align:center;}
+.card h3{margin:12px 0 4px;font-size:14px;font-weight:500;color:#f3aa78;}
+.card p{font-size:11px;color:#888;max-width:180px;margin:0 auto;}
+.icon{width:192px;height:192px;border-radius:40px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+</style>
+</head>
+<body>
+
+<!-- A: Warm gradient + smile arc -->
+<div class="card">
+<div class="icon">
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="gA" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a1410"/><stop offset="100%" stop-color="#2a1e14"/></linearGradient></defs>
+<rect width="192" height="192" fill="url(#gA)"/>
+<circle cx="96" cy="88" r="52" fill="none" stroke="#f3aa78" stroke-width="3" opacity=".15"/>
+<path d="M68 98 Q96 126 124 98" fill="none" stroke="#f3aa78" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+<circle cx="78" cy="80" r="4.5" fill="#f3aa78" opacity=".85"/>
+<circle cx="114" cy="80" r="4.5" fill="#f3aa78" opacity=".85"/>
+<text x="96" y="156" text-anchor="middle" fill="#f3aa78" font-family="'Space Grotesk',system-ui" font-size="22" font-weight="600" letter-spacing="3" opacity=".7">emlog</text>
+</svg>
+</div>
+<h3>A — Smile Face</h3>
+<p>アプリの顔アイコンをそのまま。シンプルで認識しやすい</p>
+</div>
+
+<!-- B: Wave line (mood chart) -->
+<div class="card">
+<div class="icon">
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="gB" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1410"/><stop offset="100%" stop-color="#0d0a08"/></linearGradient>
+<linearGradient id="gB2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f3aa78" stop-opacity=".3"/><stop offset="100%" stop-color="#f3aa78" stop-opacity="0"/></linearGradient></defs>
+<rect width="192" height="192" fill="url(#gB)"/>
+<path d="M20 110 Q48 70 72 95 Q96 120 120 80 Q144 40 172 75" fill="none" stroke="#f3aa78" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M20 110 Q48 70 72 95 Q96 120 120 80 Q144 40 172 75 L172 160 L20 160 Z" fill="url(#gB2)"/>
+<circle cx="72" cy="95" r="5" fill="#efb98e" stroke="#1a1410" stroke-width="2"/>
+<circle cx="120" cy="80" r="5" fill="#f3aa78" stroke="#1a1410" stroke-width="2"/>
+<circle cx="172" cy="75" r="5" fill="#f3aa78" stroke="#1a1410" stroke-width="2"/>
+<text x="96" y="156" text-anchor="middle" fill="#f3aa78" font-family="'Space Grotesk',system-ui" font-size="20" font-weight="600" letter-spacing="4" opacity=".55">emlog</text>
+</svg>
+</div>
+<h3>B — Mood Wave</h3>
+<p>気分チャートの波をアイコン化。「振り返り」の象徴</p>
+</div>
+
+<!-- C: Minimal circle + dot -->
+<div class="card">
+<div class="icon">
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+<rect width="192" height="192" fill="#0e0c0a"/>
+<circle cx="96" cy="86" r="42" fill="none" stroke="#f3aa78" stroke-width="3.5" opacity=".25"/>
+<circle cx="96" cy="86" r="8" fill="#f3aa78"/>
+<circle cx="96" cy="86" r="14" fill="none" stroke="#f3aa78" stroke-width="1.5" opacity=".5"/>
+<text x="96" y="154" text-anchor="middle" fill="#f3aa78" font-family="'Space Grotesk',system-ui" font-size="24" font-weight="700" letter-spacing="2" opacity=".8">e</text>
+</svg>
+</div>
+<h3>C — Ripple</h3>
+<p>感情の波紋。中心から広がるイメージ。ミニマル</p>
+</div>
+
+<!-- D: Book / journal -->
+<div class="card">
+<div class="icon">
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="gD" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#161210"/><stop offset="100%" stop-color="#1e1812"/></linearGradient></defs>
+<rect width="192" height="192" fill="url(#gD)"/>
+<rect x="52" y="42" width="88" height="108" rx="6" fill="none" stroke="#f3aa78" stroke-width="3" opacity=".35"/>
+<rect x="58" y="42" width="82" height="108" rx="4" fill="none" stroke="#f3aa78" stroke-width="2.5" opacity=".6"/>
+<line x1="68" y1="42" x2="68" y2="150" stroke="#f3aa78" stroke-width="1.5" opacity=".25"/>
+<path d="M80 78 Q92 66 104 78" fill="none" stroke="#f3aa78" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+<circle cx="86" cy="70" r="2.5" fill="#f3aa78" opacity=".7"/>
+<circle cx="100" cy="70" r="2.5" fill="#f3aa78" opacity=".7"/>
+<line x1="78" y1="96" x2="110" y2="96" stroke="#f3aa78" stroke-width="2" stroke-linecap="round" opacity=".25"/>
+<line x1="78" y1="106" x2="100" y2="106" stroke="#f3aa78" stroke-width="2" stroke-linecap="round" opacity=".2"/>
+</svg>
+</div>
+<h3>D — Journal</h3>
+<p>日記帳+顔。「記録は軽く」を体現</p>
+</div>
+
+<!-- E: Abstract em -->
+<div class="card">
+<div class="icon">
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+<rect width="192" height="192" fill="#0f0d0b"/>
+<text x="96" y="122" text-anchor="middle" fill="#f3aa78" font-family="Georgia,serif" font-size="96" font-weight="400" letter-spacing="-4" opacity=".9">em</text>
+<circle cx="138" cy="72" r="6" fill="#f3aa78" opacity=".4"/>
+</svg>
+</div>
+<h3>E — Typography</h3>
+<p>「em」のタイポグラフィ。セリフ体で上品に</p>
+</div>
+
+<!-- F: Sunset gradient with face -->
+<div class="card">
+<div class="icon">
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+<defs><radialGradient id="gF" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#3d2a18"/><stop offset="100%" stop-color="#0d0a08"/></radialGradient></defs>
+<rect width="192" height="192" fill="url(#gF)"/>
+<circle cx="96" cy="88" r="40" fill="#f3aa78" opacity=".08"/>
+<circle cx="96" cy="88" r="28" fill="#f3aa78" opacity=".1"/>
+<path d="M76 94 Q96 114 116 94" fill="none" stroke="#f3aa78" stroke-width="4" stroke-linecap="round"/>
+<circle cx="84" cy="82" r="3.5" fill="#f3aa78" opacity=".9"/>
+<circle cx="108" cy="82" r="3.5" fill="#f3aa78" opacity=".9"/>
+<path d="M96 56 L96 62 M116 62 L112 67 M76 62 L80 67 M122 76 L118 79 M70 76 L74 79" stroke="#f3aa78" stroke-width="2.5" stroke-linecap="round" opacity=".3"/>
+</svg>
+</div>
+<h3>F — Glow Face</h3>
+<p>太陽のような暖かさ+スマイル。ポジティブな印象</p>
+</div>
+
+</body>
+</html>
