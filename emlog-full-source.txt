@@ -575,7 +575,16 @@ const loadTags = () => {
   }catch(e){ return DEFAULT_TAGS.map(x=>({...x})); }
 };
 const saveTagsLS = (t) => localStorage.setItem(TKEY, JSON.stringify(t));
-const DEFAULT_SETTINGS = { reminderOn:false, reminderTime:'21:00', theme:'dark' };
+const DEFAULT_SETTINGS = { reminderOn:false, reminderTime:'21:00', theme:'dark', hiddenSections:[] };
+const ANALYSIS_SECTIONS = [
+  { id:'chart', label:'気分の波' },
+  { id:'corr', label:'行動 × 気分' },
+  { id:'dist', label:'気分の分布' },
+  { id:'weekday', label:'曜日べつ平均' },
+  { id:'stability', label:'安定度' },
+  { id:'calendar', label:'カレンダー' },
+  { id:'summary', label:'概要' },
+];
 const loadSettings = () => { try{return {...DEFAULT_SETTINGS,...(JSON.parse(localStorage.getItem(SKEY)||'{}'))}}catch(e){return {...DEFAULT_SETTINGS}} };
 const saveSettingsLS = (s) => localStorage.setItem(SKEY, JSON.stringify(s));
 
@@ -611,7 +620,7 @@ const DAYLIO_TAG_MAP = {
 
 function parseDaylioCSV(text){
   const t = text.charCodeAt(0)===0xFEFF ? text.slice(1) : text;
-  const lines = t.trim().split('\n');
+  const lines = t.trim().replace(/\r\n?/g,'\n').split('\n');
   if(lines.length<2) return null;
   const header = lines[0].toLowerCase();
   if(!header.includes('full_date') && !header.includes('activities')) return null;
@@ -982,7 +991,8 @@ function CalendarHeatmap({ records }){
 }
 
 // ============ ANALYSIS SCREEN (Phase 2+3) ============
-function AnalysisScreen({ records }){
+function AnalysisScreen({ records, hiddenSections=[] }){
+  const show = (id) => !hiddenSections.includes(id);
   const [period,setPeriod] = useState('1m');
   const filtered = filterByPeriod(records, period);
   const keys = Object.keys(filtered).sort();
@@ -1011,12 +1021,12 @@ function AnalysisScreen({ records }){
 
       <PeriodFilter value={period} onChange={setPeriod}/>
 
-      <div className="sec">
+      {show('chart') && <div className="sec">
         <div className="lbl">気分の波</div>
         <MoodChart records={filtered}/>
-      </div>
+      </div>}
 
-      <div className="sec">
+      {show('corr') && <div className="sec">
         <div className="lbl">行動 × 気分</div>
         <div className="corr-hint">やった日 vs やってない日の平均気分の差</div>
         {rankings.length>0 ? (
@@ -1043,36 +1053,36 @@ function AnalysisScreen({ records }){
             })}
           </div>
         ) : <div className="empty-note">まだデータが足りません（2日以上必要）</div>}
-      </div>
+      </div>}
 
-      <div className="sec">
+      {show('dist') && <div className="sec">
         <div className="lbl">気分の分布</div>
         <MoodDistribution records={filtered}/>
-      </div>
+      </div>}
 
-      <div className="sec">
+      {show('weekday') && <div className="sec">
         <div className="lbl">曜日べつ平均</div>
         <WeekdayBars records={filtered}/>
-      </div>
+      </div>}
 
-      <div className="sec">
+      {show('stability') && <div className="sec">
         <div className="lbl">安定度</div>
         <div className="corr-hint">月ごとの平均と気分のばらつき</div>
         <StabilityView records={records}/>
-      </div>
+      </div>}
 
-      <div className="sec">
+      {show('calendar') && <div className="sec">
         <div className="lbl">カレンダー</div>
         <CalendarHeatmap records={records}/>
-      </div>
+      </div>}
 
-      <div className="sec">
+      {show('summary') && <div className="sec">
         <div className="lbl">概要</div>
         <div className="tiles">
           <div className="tile"><div className="v">{total}<small> 日</small></div><div className="t">記録日数</div></div>
           <div className="tile"><div className="v">{avg}</div><div className="t">平均きぶん</div></div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -1205,16 +1215,18 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
     if(file.text) return file.text().then(resolve,reject);
     const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=()=>reject(r.error); r.readAsText(file,'UTF-8');
   });
+  const [importPreview,setImportPreview]=useState(null);
   const handleImport=async(e)=>{
     const f=e.target.files&&e.target.files[0]; if(!f) return;
     try{
       const text=await readFileText(f); let data;
-      data = parseDaylioCSV(text);
+      const normalized = text.replace(/\r\n?/g,'\n');
+      data = parseDaylioCSV(normalized);
       if(!data){
-        try{ data=JSON.parse(text); }catch(_){}
+        try{ data=JSON.parse(normalized); }catch(_){}
       }
       if(!data){
-        const lines=text.trim().split('\n'); data={};
+        const lines=normalized.trim().split('\n'); data={};
         for(let i=1;i<lines.length;i++){
           const cols=parseCSVRow(lines[i]); if(!cols||cols.length<3) continue;
           const [date,mood,,tags,good]=cols;
@@ -1227,12 +1239,13 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
       }
       if(data && typeof data==='object'){
         const count=Object.keys(data).length;
-        if(!count){ alert('データが見つかりませんでした。'); return; }
-        if(confirm(`${count}件をインポートしますか？`)) onImport(data);
+        if(!count){ setImportPreview(null); onClose(); onImport(null); return; }
+        setImportPreview({data,count});
       }
-    }catch(err){ alert('読み込めませんでした: '+err.message); }
+    }catch(err){ setImportPreview(null); }
     e.target.value='';
   };
+  const doImport=()=>{ if(importPreview){ onImport(importPreview.data); setImportPreview(null); onClose(); } };
 
   return (
     <>
@@ -1271,7 +1284,31 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
       <button className="set-btn full" onClick={()=>fileRef.current&&fileRef.current.click()}>
         インポート（JSON / CSV / Daylio）
       </button>
-      <input ref={fileRef} type="file" accept=".json,.csv,text/csv,text/plain,application/json" style={{display:'none'}} onChange={handleImport}/>
+      <input ref={fileRef} type="file" accept=".json,.csv,text/csv,text/plain,application/json,*/*" style={{display:'none'}} onChange={handleImport}/>
+      {importPreview && (
+        <div style={{marginTop:12,padding:'14px 16px',background:'var(--glass)',borderRadius:16}}>
+          <div style={{fontSize:14,fontWeight:600,marginBottom:10}}>{importPreview.count}件のデータが見つかりました</div>
+          <div style={{display:'flex',gap:8}}>
+            <button className="primary" style={{marginTop:0,flex:1}} onClick={doImport}>インポートする</button>
+            <button className="set-btn" style={{flex:'0 0 auto'}} onClick={()=>setImportPreview(null)}>やめる</button>
+          </div>
+        </div>
+      )}
+
+      <div className="set-divider"></div>
+      <div className="set-row" style={{borderBottom:'none'}}>
+        <div><div className="st">分析の表示</div></div>
+      </div>
+      {ANALYSIS_SECTIONS.map(sec=>(
+        <div key={sec.id} className="set-row">
+          <div className="st" style={{fontSize:13}}>{sec.label}</div>
+          <button className={'sw'+((s.hiddenSections||[]).includes(sec.id)?'':' on')}
+            onClick={()=>{
+              const hidden = s.hiddenSections||[];
+              setS({...s, hiddenSections: hidden.includes(sec.id) ? hidden.filter(x=>x!==sec.id) : [...hidden,sec.id]});
+            }}></button>
+        </div>
+      ))}
 
       <button className="primary" style={{marginTop:24}} onClick={commit}>閉じる</button>
     </>
@@ -1317,18 +1354,31 @@ function App(){
     return ()=>clearTimeout(remT.current);
   },[settings,records]);
 
-  const flash = useCallback((msg='保存しました')=>{ setToast(msg); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToast(null),1400); },[]);
+  const flash = useCallback((msg='保存しました',duration=1400)=>{ setToast(msg); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToast(null),duration); },[]);
+  const trendMsg = useCallback((mood,prev)=>{
+    const week = Object.keys(prev).filter(k=>{ const d=new Date()-new Date(k+'T00:00:00'); return d>0 && d<7*86400000; });
+    if(week.length<2) return '保存しました';
+    const avg = week.reduce((s,k)=>s+prev[k].mood,0)/week.length;
+    const diff = mood - avg;
+    if(diff>0.4) return '保存 ↑ 先週より上向き';
+    if(diff<-0.4) return '保存 ↓ 先週より低め';
+    return '保存 → 安定してます';
+  },[]);
   const saveDay = useCallback((key,data)=>{
-    setRecords(prev=>({...prev,[key]:{...data,updatedAt:new Date().toISOString()}}));
-    flash();
-  },[flash]);
+    setRecords(prev=>{
+      const msg = key===todayKey() ? trendMsg(data.mood,prev) : '保存しました';
+      flash(msg, 2000);
+      return {...prev,[key]:{...data,updatedAt:new Date().toISOString()}};
+    });
+  },[flash,trendMsg]);
   const deleteDay = useCallback((key)=>{
     setRecords(prev=>{ const n={...prev}; delete n[key]; return n; });
     setSheet(null);
   },[]);
   const importRecords = useCallback((data)=>{
+    if(!data){ flash('データが見つかりませんでした',2000); return; }
     setRecords(data);
-    flash(`${Object.keys(data).length}件をインポートしました`);
+    flash(`${Object.keys(data).length}件をインポートしました`,2000);
   },[flash]);
 
   const go = (id)=>{ if(id!==screen){ setScreen(id); buzz(14);} };
@@ -1348,7 +1398,7 @@ function App(){
       <div className="screen enter" key={screen}>
         {screen==='home' && <HomeScreen records={records} tags={tags} onSaveToday={saveDay}
             onOpenDay={(k)=>setSheet({type:'day',dayKey:k})} onManageTags={()=>setSheet({type:'tags'})}/>}
-        {screen==='analysis' && <AnalysisScreen records={records}/>}
+        {screen==='analysis' && <AnalysisScreen records={records} hiddenSections={settings.hiddenSections||[]}/>}
       </div>
 
       <nav className="nav">
@@ -1501,7 +1551,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 ========================================
 
 // emlog Service Worker — offline cache (cache-first for app shell)
-const CACHE = 'emlog-v8';
+const CACHE = 'emlog-v9';
 const ASSETS = [
   './',
   './index.html',
