@@ -165,6 +165,7 @@ function parseDaylioCSV(text){
     const rawActs = actCol!=null && row[actCol] ? row[actCol].split(/[|]/).map(s=>s.trim()).filter(Boolean) : [];
     const tags = rawActs.map(a => DAYLIO_TAG_MAP.hasOwnProperty(a) ? DAYLIO_TAG_MAP[a] : a).filter(Boolean);
     const note = noteCol!=null ? (row[noteCol]||'').replace(/<br\s*\/?>/gi,'\n').trim() : '';
+    if(data[dateStr]) continue;
     data[dateStr] = { mood, tags:[...new Set(tags)], goodThings:note, why:'', photo:'', updatedAt: new Date(dateStr+'T00:00:00').toISOString() };
   }
   return Object.keys(data).length>0 ? data : null;
@@ -726,26 +727,30 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
     });
     download('emlog.csv',csv,'text/csv');
   };
+  const readFileText=(file)=>new Promise((resolve,reject)=>{
+    if(file.text) return file.text().then(resolve,reject);
+    const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=()=>reject(r.error); r.readAsText(file,'UTF-8');
+  });
   const handleImport=async(e)=>{
     const f=e.target.files&&e.target.files[0]; if(!f) return;
     try{
-      const text=await f.text(); let data;
-      if(f.name.endsWith('.json')) data=JSON.parse(text);
-      else if(f.name.endsWith('.csv')){
-        data = parseDaylioCSV(text);
-        if(!data){
-          const lines=text.trim().split('\n'); data={};
-          for(let i=1;i<lines.length;i++){
-            const cols=parseCSVRow(lines[i]); if(!cols||cols.length<3) continue;
-            const [date,mood,,tags,good]=cols;
-            const cd=(date||'').replace(/^"|"$/g,'').trim();
-            if(!cd.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
-            data[cd]={ mood:parseInt((mood||'').replace(/"/g,''))||3,
-              tags:tags?tags.replace(/^"|"$/g,'').split('|').filter(Boolean):[],
-              goodThings:(good||'').replace(/^"|"$/g,'').replace(/""/g,'"')||'', why:'', photo:'', updatedAt:new Date().toISOString() };
-          }
+      const text=await readFileText(f); let data;
+      data = parseDaylioCSV(text);
+      if(!data){
+        try{ data=JSON.parse(text); }catch(_){}
+      }
+      if(!data){
+        const lines=text.trim().split('\n'); data={};
+        for(let i=1;i<lines.length;i++){
+          const cols=parseCSVRow(lines[i]); if(!cols||cols.length<3) continue;
+          const [date,mood,,tags,good]=cols;
+          const cd=(date||'').replace(/^"|"$/g,'').trim();
+          if(!cd.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+          data[cd]={ mood:parseInt((mood||'').replace(/"/g,''))||3,
+            tags:tags?tags.replace(/^"|"$/g,'').split('|').filter(Boolean):[],
+            goodThings:(good||'').replace(/^"|"$/g,'').replace(/""/g,'"')||'', why:'', photo:'', updatedAt:new Date().toISOString() };
         }
-      } else { alert('JSON または CSV ファイルを選んでください'); return; }
+      }
       if(data && typeof data==='object'){
         const count=Object.keys(data).length;
         if(!count){ alert('データが見つかりませんでした。'); return; }
@@ -792,7 +797,7 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
       <button className="set-btn full" onClick={()=>fileRef.current&&fileRef.current.click()}>
         インポート（JSON / CSV / Daylio）
       </button>
-      <input ref={fileRef} type="file" accept=".json,.csv" style={{display:'none'}} onChange={handleImport}/>
+      <input ref={fileRef} type="file" accept=".json,.csv,text/csv,text/plain,application/json" style={{display:'none'}} onChange={handleImport}/>
 
       <button className="primary" style={{marginTop:24}} onClick={commit}>閉じる</button>
     </>
