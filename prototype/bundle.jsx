@@ -80,7 +80,7 @@ const fmtLong = (d) => `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}�
 const fmtShort = (d) => `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
 
 // ---- storage ----
-const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v5', SKEY='emlog_proto_settings_v1';
+const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v5', SKEY='emlog_proto_settings_v1', XKEY='emlog_proto_lastexport_v1';
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
 const NEG_NAMES = new Set(DEFAULT_TAGS.filter(t=>t.neg).map(t=>t.name));
@@ -517,9 +517,10 @@ function CalendarHeatmap({ records }){
 }
 
 // ============ ANALYSIS SCREEN (Phase 2+3) ============
-function AnalysisScreen({ records, hiddenSections=[] }){
+function AnalysisScreen({ records, tags=[], hiddenSections=[], onOpenDay }){
   const show = (id) => !hiddenSections.includes(id);
   const [period,setPeriod] = useState('1m');
+  const [q,setQ] = useState('');
   const filtered = filterByPeriod(records, period);
   const keys = Object.keys(filtered).sort();
   const total = keys.length;
@@ -530,6 +531,8 @@ function AnalysisScreen({ records, hiddenSections=[] }){
   keys.forEach(k=>{ const r=filtered[k]; (r.tags||[]).forEach(t=>{ if(!tagMoods[t]) tagMoods[t]=[]; tagMoods[t].push(r.mood); }); });
   const withoutTag = (tag) => { const moods=[]; keys.forEach(k=>{ const r=filtered[k]; if(!(r.tags||[]).includes(tag)) moods.push(r.mood); }); return moods; };
 
+  // 翌日の気分への影響（やった日の翌日 vs やってない日の翌日）
+  const dayAfter = (k)=>{ const d=new Date(k+'T00:00:00'); d.setDate(d.getDate()+1); return keyOf(d); };
   const rankings = Object.entries(tagMoods)
     .filter(([_,m])=>m.length>=2)
     .map(([tag,m])=>{
@@ -537,13 +540,66 @@ function AnalysisScreen({ records, hiddenSections=[] }){
       const noMoods = withoutTag(tag);
       const noAvg = noMoods.length ? noMoods.reduce((a,b)=>a+b,0)/noMoods.length : 0;
       const delta = yesAvg - noAvg;
-      return { tag, count:m.length, yesAvg, noAvg, delta };
+      const yesNext=[], noNext=[];
+      keys.forEach(k=>{
+        const nr = records[dayAfter(k)];
+        if(!nr) return;
+        if((filtered[k].tags||[]).includes(tag)) yesNext.push(nr.mood); else noNext.push(nr.mood);
+      });
+      const nextDelta = (yesNext.length>=2 && noNext.length>=2)
+        ? yesNext.reduce((a,b)=>a+b,0)/yesNext.length - noNext.reduce((a,b)=>a+b,0)/noNext.length
+        : null;
+      return { tag, count:m.length, yesAvg, noAvg, delta, nextDelta };
     })
     .sort((a,b)=>b.delta-a.delta);
+
+  // メモ・タグ検索（全期間対象）
+  const query = q.trim().toLowerCase();
+  const hits = query ? Object.keys(records).filter(k=>{
+    const r=records[k];
+    return (r.goodThings||'').toLowerCase().includes(query)
+      || (r.tags||[]).some(t=>t.toLowerCase().includes(query));
+  }).sort((a,b)=>b.localeCompare(a)) : [];
+  const hitAvg = hits.length ? (hits.reduce((s,k)=>s+records[k].mood,0)/hits.length).toFixed(1) : null;
+  const negSet = new Set(tags.filter(t=>t.neg).map(t=>t.name));
 
   return (
     <div className="scroll">
       <div className="log-head"><span className="log-date">分析</span></div>
+
+      <div className="search-wrap">
+        <input className="search-input" placeholder="メモ・タグを検索" value={q} onChange={e=>setQ(e.target.value)}/>
+        {query && <button className="search-clear" onClick={()=>setQ('')}>×</button>}
+      </div>
+
+      {query ? (
+        <div className="sec">
+          <div className="lbl">検索結果 {hits.length}件{hitAvg && <span style={{textTransform:'none',letterSpacing:1}}> · 平均きぶん {hitAvg}</span>}</div>
+          {hits.length===0 && <div className="empty-note">見つかりませんでした</div>}
+          <div className="rec-list">
+            {hits.slice(0,50).map(k=>{
+              const r=records[k]; const d=new Date(k+'T00:00:00'); const m=moodMeta(r.mood);
+              const tagList=(r.tags||[]).slice(0,4);
+              return (
+                <div key={k} className="rec-card" onClick={()=>onOpenDay&&onOpenDay(k)}>
+                  <div className="rec-head">
+                    <span className="rec-date">{d.getFullYear()}/{d.getMonth()+1}/{d.getDate()}（{DOW[d.getDay()]}）</span>
+                    <span className="rec-mood" style={{background:m.raw}}><MoodFace v={r.mood} size={14}/></span>
+                  </div>
+                  {tagList.length>0 && (
+                    <div className="rec-tags">
+                      {tagList.map(t=><span key={t} className={'rec-tag'+(negSet.has(t)?' neg':'')}>{t}</span>)}
+                      {(r.tags||[]).length>4 && <span className="rec-tag more">+{(r.tags||[]).length-4}</span>}
+                    </div>
+                  )}
+                  {r.goodThings && <div className="rec-note">{r.goodThings}</div>}
+                </div>
+              );
+            })}
+          </div>
+          {hits.length>50 && <div className="empty-note">先頭50件のみ表示しています</div>}
+        </div>
+      ) : (<>
 
       <PeriodFilter value={period} onChange={setPeriod}/>
 
@@ -554,9 +610,16 @@ function AnalysisScreen({ records, hiddenSections=[] }){
 
       {show('corr') && <div className="sec">
         <div className="lbl">行動 × 気分</div>
-        <div className="corr-hint">やった日 vs やってない日の平均気分の差</div>
+        <div className="corr-hint">やった日 vs やってない日の平均気分の差。「翌日」はその行動が翌日の気分に与える影響</div>
         {rankings.length>0 ? (
           <div className="corr-list">
+            <div className="corr-row corr-head">
+              <span className="corr-tag"></span>
+              <span className="corr-n"></span>
+              <span className="corr-bar-wrap"></span>
+              <span className="corr-delta">当日</span>
+              <span className="corr-next">翌日</span>
+            </div>
             {rankings.map(c=>{
               const isPos = c.delta >= 0;
               const maxD = Math.max(0.1,...rankings.map(r=>Math.abs(r.delta)));
@@ -573,6 +636,9 @@ function AnalysisScreen({ records, hiddenSections=[] }){
                   </span>
                   <span className={'corr-delta'+(isPos?' pos':' neg')}>
                     {isPos?'+':''}{c.delta.toFixed(2)}
+                  </span>
+                  <span className={'corr-next'+(c.nextDelta==null?' na':c.nextDelta>=0?' pos':' neg')}>
+                    {c.nextDelta==null?'—':(c.nextDelta>=0?'+':'')+c.nextDelta.toFixed(2)}
                   </span>
                 </div>
               );
@@ -609,6 +675,7 @@ function AnalysisScreen({ records, hiddenSections=[] }){
           <div className="tile"><div className="v">{avg}</div><div className="t">平均きぶん</div></div>
         </div>
       </div>}
+      </>)}
     </div>
   );
 }
@@ -706,7 +773,7 @@ function TagManagerSheet({ tags, onChange, onClose }){
 }
 
 // ============ SETTINGS SHEET (now includes Export/Import) ============
-function SettingsSheet({ settings, records, onChange, onImport, onClose }){
+function SettingsSheet({ settings, records, onChange, onImport, lastExport, onExported, onClose }){
   const [s,setS]=useState({...settings});
   const [permNote,setPermNote]=useState('');
   const fileRef = useRef(null);
@@ -727,7 +794,7 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
     const a=document.createElement('a'); a.href=url; a.download=name; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
-  const toJson=()=>download('emlog-backup.json',JSON.stringify(records,null,2),'application/json');
+  const toJson=()=>{ download('emlog-backup.json',JSON.stringify(records,null,2),'application/json'); onExported&&onExported(); };
   const toCsv=()=>{
     const ks=Object.keys(records).sort();
     let csv='date,mood,mood_label,tags,good_things\n';
@@ -736,6 +803,7 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
       csv+=[k,r.mood,m.l,(r.tags||[]).join('|'),r.goodThings||''].map(esc).join(',')+'\n';
     });
     download('emlog.csv',csv,'text/csv');
+    onExported&&onExported();
   };
   const readFileText=(file)=>new Promise((resolve,reject)=>{
     if(file.text) return file.text().then(resolve,reject);
@@ -801,7 +869,10 @@ function SettingsSheet({ settings, records, onChange, onImport, onClose }){
 
       <div className="set-divider"></div>
       <div className="set-row" style={{borderBottom:'none'}}>
-        <div><div className="st">データ</div></div>
+        <div><div className="st">データ</div>
+          <div className="sd">{lastExport
+            ? `最終バックアップ: ${new Date(lastExport).getFullYear()}/${new Date(lastExport).getMonth()+1}/${new Date(lastExport).getDate()}`
+            : 'まだバックアップがありません'}</div></div>
       </div>
       <div style={{display:'flex',gap:8,marginBottom:10}}>
         <button className="set-btn" onClick={toJson}>JSON 書き出し</button>
@@ -855,8 +926,20 @@ function App(){
   const [screen,setScreen] = useState('home');
   const [sheet,setSheet] = useState(null);
   const [toast,setToast] = useState(null);
+  const [lastExport,setLastExport] = useState(()=>{ try{return localStorage.getItem(XKEY)}catch(e){return null} });
   const toastT = useRef(null);
   const remT = useRef(null);
+
+  // OSにストレージの永続化を要求（消されにくくする）
+  useEffect(()=>{ try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){} },[]);
+
+  const markExport = useCallback(()=>{
+    const t = new Date().toISOString();
+    try{ localStorage.setItem(XKEY,t); }catch(e){}
+    setLastExport(t);
+  },[]);
+  const backupStale = Object.keys(records).length>0 &&
+    (!lastExport || (Date.now()-new Date(lastExport).getTime()) > 30*86400000);
 
   useEffect(()=>saveRecordsLS(records),[records]);
   useEffect(()=>saveTagsLS(tags),[tags]);
@@ -923,8 +1006,10 @@ function App(){
 
       <div className="screen enter" key={screen}>
         {screen==='home' && <HomeScreen records={records} tags={tags} onSaveToday={saveDay}
-            onOpenDay={(k)=>setSheet({type:'day',dayKey:k})} onManageTags={()=>setSheet({type:'tags'})}/>}
-        {screen==='analysis' && <AnalysisScreen records={records} hiddenSections={settings.hiddenSections||[]}/>}
+            onOpenDay={(k)=>setSheet({type:'day',dayKey:k})} onManageTags={()=>setSheet({type:'tags'})}
+            backupStale={backupStale} onOpenSettings={()=>setSheet({type:'settings'})}/>}
+        {screen==='analysis' && <AnalysisScreen records={records} tags={tags} hiddenSections={settings.hiddenSections||[]}
+            onOpenDay={(k)=>setSheet({type:'day',dayKey:k})}/>}
       </div>
 
       <nav className="nav">
@@ -936,6 +1021,7 @@ function App(){
         ))}
         <button className="tab tab-set" onClick={()=>{setSheet({type:'settings'}); buzz(14);}} title="設定">
           <span className="ic"><GearIcon/></span>
+          {backupStale && <span className="nav-dot"/>}
         </button>
       </nav>
 
@@ -947,7 +1033,8 @@ function App(){
           {sheet && sheet.type==='tags' &&
             <TagManagerSheet tags={tags} onChange={setTags} onClose={()=>setSheet(null)}/>}
           {sheet && sheet.type==='settings' &&
-            <SettingsSheet settings={settings} records={records} onChange={setSettings} onImport={importRecords} onClose={()=>setSheet(null)}/>}
+            <SettingsSheet settings={settings} records={records} onChange={setSettings} onImport={importRecords}
+              lastExport={lastExport} onExported={markExport} onClose={()=>setSheet(null)}/>}
         </div>
       </div>
     </div>
@@ -955,7 +1042,7 @@ function App(){
 }
 
 // ============ HOME SCREEN ============
-function HomeScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
+function HomeScreen({ records, tags, onSaveToday, onOpenDay, onManageTags, backupStale, onOpenSettings }){
   const tk = todayKey();
   const cur = records[tk] || null;
   const [mood,setMood] = useState(cur?cur.mood:null);
@@ -1011,6 +1098,12 @@ function HomeScreen({ records, tags, onSaveToday, onOpenDay, onManageTags }){
       <div className="log-head">
         <span className="log-date">{now.getMonth()+1}月{now.getDate()}日（{DOW[now.getDay()]}）</span>
       </div>
+
+      {backupStale && (
+        <button className="backup-note" onClick={onOpenSettings}>
+          30日以上バックアップしていません — タップして書き出し
+        </button>
+      )}
 
       <div className="sec">
         <MoodSelector value={mood} onPick={pickMood}/>
