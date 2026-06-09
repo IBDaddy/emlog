@@ -1,5 +1,5 @@
 // emlog Service Worker — offline cache (cache-first for app shell)
-const CACHE = 'emlog-v11';
+const CACHE = 'emlog-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,38 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
+  );
+});
+
+// プッシュ受信：今日すでに記録済みならスキップ（アプリ側が emlog-flags キャッシュに記録日を書き込む）
+self.addEventListener('push', (e) => {
+  e.waitUntil((async () => {
+    try {
+      const c = await caches.open('emlog-flags');
+      const hit = await c.match('./last-recorded');
+      if (hit) {
+        const recorded = await hit.text();
+        const d = new Date();
+        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (recorded === today) return;
+      }
+    } catch (err) { /* フラグが読めなければ通知を出す側に倒す */ }
+    await self.registration.showNotification('emlog', {
+      body: '今日の気分、まだ残してないよ。',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'emlog-reminder',
+    });
+  })());
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ws) => {
+      for (const w of ws) { if ('focus' in w) return w.focus(); }
+      return clients.openWindow('./');
+    })
   );
 });
 

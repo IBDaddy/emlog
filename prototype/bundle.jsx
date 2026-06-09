@@ -81,6 +81,12 @@ const fmtShort = (d) => `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}�
 
 // ---- storage ----
 const RKEY='emlog_proto_records_v1', TKEY='emlog_proto_tags_v5', SKEY='emlog_proto_settings_v1', XKEY='emlog_proto_lastexport_v1';
+
+// ---- Web Push (サーバー通知) ----
+const VAPID_PUBLIC_KEY='BHHJ6cEpxJe9IfMeaEg17K5eT6NjXRFBj1vrpO_FsbzxXCFJce7sit6LUWTfSLHKAd1Nb-vEfvbj9qaL4GtuwsE';
+const urlB64ToU8=(s)=>{const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0));};
+// 今日の記録が済んだことを Service Worker に伝えるフラグ(プッシュ受信時の通知抑制に使う)
+const markRecordedToday=(key)=>{ try{ caches.open('emlog-flags').then(c=>c.put('./last-recorded', new Response(key))); }catch(e){} };
 const loadRecords = () => { try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null} };
 const saveRecordsLS = (r) => localStorage.setItem(RKEY, JSON.stringify(r));
 const NEG_NAMES = new Set(DEFAULT_TAGS.filter(t=>t.neg).map(t=>t.name));
@@ -777,6 +783,43 @@ function SettingsSheet({ settings, records, onChange, onImport, lastExport, onEx
   const [s,setS]=useState({...settings});
   const [permNote,setPermNote]=useState('');
   const fileRef = useRef(null);
+
+  // ---- サーバー通知（Web Push）の購読 ----
+  const [pushSub,setPushSub]=useState(null);
+  const [pushNote,setPushNote]=useState('');
+  useEffect(()=>{
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    navigator.serviceWorker.ready
+      .then(reg=>reg.pushManager.getSubscription())
+      .then(sub=>{ if(sub) setPushSub(JSON.stringify(sub)); })
+      .catch(()=>{});
+  },[]);
+  const enablePush=async()=>{
+    try{
+      if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+        setPushNote('この端末はプッシュ通知に対応していません。'); return;
+      }
+      setPushNote('登録中…');
+      const perm = await Notification.requestPermission();
+      if(perm!=='granted'){ setPushNote('通知が許可されていません。端末の設定から許可してください。'); return; }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if(!sub){
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly:true,
+          applicationServerKey:urlB64ToU8(VAPID_PUBLIC_KEY),
+        });
+      }
+      setPushSub(JSON.stringify(sub));
+      setPushNote('登録できました。下の「購読情報をコピー」を押して、Vercel の環境変数 PUSH_SUBSCRIPTION に貼り付けてください。');
+    }catch(err){ setPushNote('登録に失敗しました: '+(err&&err.message||err)); }
+  };
+  const copyPushSub=async()=>{
+    try{
+      await navigator.clipboard.writeText(pushSub);
+      setPushNote('コピーしました。Vercel の環境変数 PUSH_SUBSCRIPTION に貼り付けてください。');
+    }catch(e){ setPushNote('コピーできませんでした。下の文字列を長押しして手動でコピーしてください。'); }
+  };
   const toggleReminder=async()=>{
     const next=!s.reminderOn;
     if(next && 'Notification' in window){
@@ -857,6 +900,23 @@ function SettingsSheet({ settings, records, onChange, onImport, lastExport, onEx
           <input className="time-input" type="time" value={s.reminderTime} onChange={e=>setS({...s,reminderTime:e.target.value})}/>
         </div>}
       {permNote && <div className="empty-note" style={{color:'var(--danger)'}}>{permNote}</div>}
+
+      <div className="set-row">
+        <div><div className="st">サーバー通知</div>
+          <div className="sd">アプリを閉じていても毎晩21時に届く（要セットアップ）</div></div>
+        <button className="set-btn" style={{flex:'0 0 auto'}} onClick={enablePush}>
+          {pushSub?'再登録':'登録'}
+        </button>
+      </div>
+      {pushNote && <div className="empty-note" style={{marginBottom:8}}>{pushNote}</div>}
+      {pushSub && (
+        <>
+          <button className="set-btn full" onClick={copyPushSub}>購読情報をコピー</button>
+          <textarea readOnly value={pushSub}
+            style={{width:'100%',height:64,marginTop:8,marginBottom:4,fontSize:10,
+              background:'var(--glass)',color:'var(--ink-dim)',border:'none',borderRadius:12,padding:10,resize:'none'}}/>
+        </>
+      )}
 
       <div className="set-row">
         <div><div className="st">テーマ</div>
@@ -979,6 +1039,7 @@ function App(){
       flash(msg, 2000);
       return {...prev,[key]:{...data,updatedAt:new Date().toISOString()}};
     });
+    if(key===todayKey()) markRecordedToday(key);
   },[flash,trendMsg]);
   const deleteDay = useCallback((key)=>{
     setRecords(prev=>{ const n={...prev}; delete n[key]; return n; });
